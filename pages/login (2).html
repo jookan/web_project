@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>로그인 - MusicDig</title>
+<style>
+  body {
+    background-color: #14151a;
+    color: #eee;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    display: flex;
+    min-height: 100vh;
+    flex-wrap: wrap;
+  }
+  .hero {
+    flex: 1 1 300px;
+    padding: 60px 40px;
+    background: linear-gradient(135deg, #1f2128, #14151a);
+  }
+  .hero h1 { font-size: 32px; margin-bottom: 10px;}
+  .hero h2 { font-size: 20px; color: #ccc; margin-bottom: 20px; }
+  .hero ul { line-height: 1.8; color: #bbb; padding-left: 20px; }
+  .login-panel {
+    flex: 1 1 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1b21;
+    padding: 40px 20px;
+  }
+  .login-card {
+    background-color: #1f2128;
+    padding: 40px;
+    border-radius: 16px;
+    width: 320px;
+    box-sizing: border-box;
+  }
+  .login-card h2 { margin-bottom: 6px; }
+  .login-card p.sub { color: #999; font-size: 14px; margin-bottom: 20px; }
+  .login-card input[type="text"],
+  .login-card input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background-color: #14151a;
+    color: #eee;
+    box-sizing: border-box;
+  }
+  .login-card input[type="submit"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background-color: #eee;
+    color: #111;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .options { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 16px; color: #999;}
+  .options a { color: #999; text-decoration: none; }
+  .guest-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: none;
+    color: #ccc;
+    cursor: pointer;
+  }
+  .signup { text-align:center; margin-top: 16px; font-size: 13px; color: #999;}
+  .signup a { color: #ccc; }
+</style>
+</head>
+<body>
+  <div class="hero">
+    <h1>🎵 MusicDig</h1>
+    <h2>나만의 플레이리스트, 악보 연습, 커뮤니티를 한 곳에서</h2>
+    <ul>
+      <li>내가 좋아하는 곡으로 나만의 플레이리스트를 만들어요</li>
+      <li>좋아하는 곡의 악보를 올리고 바로 연습해요</li>
+      <li>숨은 명곡을 커뮤니티에 공유해요</li>
+    </ul>
+  </div>
+
+  <div class="login-panel">
+    <div class="login-card">
+      <h2>로그인</h2>
+      <p class="sub">이메일과 비밀번호를 입력해주세요.</p>
+      <form>
+        <input type="text" name="userid" placeholder="이메일" required>
+        <input type="password" name="password" placeholder="비밀번호" required>
+        <div class="options">
+          <label><input type="checkbox" name="keep"> 로그인 유지</label>
+          <a href="#">비밀번호를 잊으셨나요?</a>
+        </div>
+        <input type="submit" value="로그인">
+      </form>
+      <button type="button" class="guest-btn">게스트로 둘러보기</button>
+      <p class="signup">계정이 없으신가요? <a href="#">회원가입</a></p>
+    </div>
+  </div>
+</body>
+</html>

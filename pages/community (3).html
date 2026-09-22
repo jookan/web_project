@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>커뮤니티 - MusicDig</title>
+<style>
+  body {
+    background-color: #14151a;
+    color: #e6e6e6;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 24px;
+  }
+  header h1 { text-align:center; }
+  header nav a { color:#999; margin-right:12px; text-decoration:none; }
+  nav.tabs {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+  nav.tabs a {
+    background-color: #1f2128;
+    color: #bbb;
+    padding: 8px 16px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 14px;
+  }
+  nav.tabs a.active {
+    background-color: #eee;
+    color: #111;
+    font-weight: bold;
+  }
+  .write-box {
+    background-color: #1f2128;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+  }
+  .write-box summary {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 6px 0;
+  }
+  .write-box select, .write-box textarea {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background-color: #14151a;
+    color: #eee;
+    box-sizing: border-box;
+  }
+  .write-box button {
+    margin-top: 10px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background-color: #eee;
+    color: #111;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .post-card {
+    background-color: #1f2128;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .post-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff9a8b, #a18cd1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    flex-shrink: 0;
+  }
+  .post-meta { font-size: 13px; color: #999; }
+  .post-content { margin: 10px 0; }
+  .post-tag {
+    display: inline-block;
+    background-color: #2a2c34;
+    color: #ccc;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 10px;
+  }
+  .follow-btn {
+    margin-left: auto;
+    background-color: #2a2c34;
+    color: #eee;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 14px;
+    cursor: pointer;
+  }
+  .follow-btn.following {
+    background-color: #eee;
+    color: #111;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🎵 MusicDig</h1>
+    <nav>
+      <a href="index.html">홈</a>
+      <a href="login.html">로그인</a>
+      <a href="community.html">커뮤니티</a>
+    </nav>
+  </header>
+
+  <hr/>
+
+  <section>
+    <nav class="tabs">
+      <a href="#" class="active">팔로잉</a>
+      <a href="#">곡 추천</a>
+      <a href="#">악보 공유</a>
+      <a href="#">자유</a>
+    </nav>
+
+    <details class="write-box">
+      <summary>✏️ 글쓰기</summary>
+      <form>
+        <label for="category">카테고리 선택</label>
+        <select id="category" name="category">
+          <option value="song">곡 추천</option>
+          <option value="sheet">악보 공유</option>
+          <option value="free">자유</option>
+        </select>
+        <textarea rows="3" placeholder="무슨 곡 이야기를 나눠볼까요?"></textarea>
+        <button type="button">등록</button>
+      </form>
+    </details>
+
+    <article class="post-card">
+      <div class="post-header">
+        <div class="avatar">1</div>
+        <div>
+          <strong>사용자1</strong>
+          <div class="post-meta">방금 전 · <span class="post-tag">곡 추천</span></div>
+        </div>
+        <button type="button" class="follow-btn" onclick="this.classList.toggle('following'); this.textContent = this.classList.contains('following') ? '팔로잉' : '팔로우';">팔로우</button>
+      </div>
+      <p class="post-content">요즘 계속 돌려 듣는 곡인데 추천드려요, 다들 어떤 곡 듣고 계세요?</p>
+      <p class="post-meta">❤ 128 · 💬 24</p>
+    </article>
+
+    <article class="post-card">
+      <div class="post-header">
+        <div class="avatar">2</div>
+        <div>
+          <strong>사용자2</strong>
+          <div class="post-meta">12분 전 · <span class="post-tag">악보 공유</span></div>
+        </div>
+        <button type="button" class="follow-btn" onclick="this.classList.toggle('following'); this.textContent = this.classList.contains('following') ? '팔로잉' : '팔로우';">팔로우</button>
+      </div>
+      <p class="post-content">연습하면서 만든 악보 공유합니다. 다들 참고해보세요!</p>
+      <p class="post-meta">❤ 52 · 💬 9</p>
+    </article>
+
+    <article class="post-card">
+      <div class="post-header">
+        <div class="avatar">3</div>
+        <div>
+          <strong>사용자3</strong>
+          <div class="post-meta">1시간 전 · <span class="post-tag">자유</span></div>
+        </div>
+        <button type="button" class="follow-btn" onclick="this.classList.toggle('following'); this.textContent = this.classList.contains('following') ? '팔로잉' : '팔로우';">팔로우</button>
+      </div>
+      <p class="post-content">오늘 노래방 3시간 있었는데 목 다 쉬었어요 ㅋㅋ 그래도 재밌었음</p>
+      <p class="post-meta">❤ 31 · 💬 5</p>
+    </article>
+  </section>
+
+  <footer>
+    <small>&copy; 2026 MusicDig Team.</small>
+  </footer>
+</body>
+</html>

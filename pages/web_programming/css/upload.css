@@ -61,7 +61,6 @@ h1 {
 
 .sheet{
     width:100%;
-    max-width:800px;
     height: 500px;
     border:1px solid black;
     border-radius: 8px;

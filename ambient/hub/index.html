@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ambient · 시작하기</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23111'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23333' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23ff8a5c'/%3E%3Ccircle cx='32' cy='32' r='2.5' fill='%23111'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../assets/theme.css?v=1">
+<script src="../assets/session.js?v=1"></script>
+<script>Session.require('../');</script>
+<style>
+  .top { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: 72px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; }
+  .me { display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 6px; border-radius: 99px; background: var(--glass); border: 1px solid var(--stroke); backdrop-filter: blur(18px); }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 14px; color: #15151a; background: linear-gradient(135deg, #ffb17a, var(--pink) 55%, var(--accent2)); }
+  .me b { font-size: 14px; font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .me .guest { font-size: 11px; color: var(--fg3); font-weight: 600; margin-left: -6px; }
+  .logout { height: 34px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--stroke-2); background: var(--glass-2); font-size: 13px; font-weight: 600; color: var(--fg2); transition: background .2s, color .2s; }
+  .logout:hover { background: rgba(255,255,255,.14); color: var(--fg); }
+
+  .stage { position: relative; z-index: 1; min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; padding: 88px 28px 88px; gap: 34px; }
+  .hello { text-align: center; animation: rise .8s var(--ease) both; }
+  .hello small { display: inline-block; margin-bottom: 12px; padding: 5px 13px; border-radius: 99px; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #ffb08f; background: rgba(255,138,92,.14); }
+  .hello h1 { margin: 0; font-size: clamp(30px, 4.6vw, 48px); letter-spacing: -.04em; line-height: 1.12; font-weight: 800; }
+  .hello h1 span { background: linear-gradient(90deg, #ffb17a, var(--pink) 50%, var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hello p { margin: 12px 0 0; color: var(--fg2); font-size: clamp(15px, 1.6vw, 17.5px); }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+
+  .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; width: min(1140px, 100%); }
+  .card { --i: 0; position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; border-radius: 28px; overflow: hidden; text-decoration: none; color: inherit; cursor: pointer;
+    background: var(--glass); border: 1px solid var(--stroke); backdrop-filter: blur(26px) saturate(1.4); box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    animation: rise .8s var(--ease) both; animation-delay: calc(.12s + var(--i) * .1s);
+    transition: transform .55s var(--ease), border-color .3s, box-shadow .55s var(--ease); }
+  .card:hover, .card:focus-visible { transform: translateY(-8px); border-color: rgba(255,255,255,.3); box-shadow: 0 44px 100px rgba(0,0,0,.6); }
+  .card.live { border-color: rgba(255,177,122,.4); box-shadow: 0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,138,92,.25), 0 0 60px rgba(255,138,92,.16); }
+  .card.nudge { animation: nudge .45s; }
+  @keyframes nudge { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+  .preview { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-bottom: 1px solid var(--stroke); background: #101015; }
+  .body { padding: 22px 24px 26px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+  .badge { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; padding: 5px 11px; border-radius: 99px; background: rgba(255,255,255,.09); color: var(--fg2); }
+  .badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--fg3); }
+  .badge.on { background: rgba(74,222,128,.14); color: #86efac; } .badge.on i { background: #4ade80; box-shadow: 0 0 10px #4ade80; animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .45; } }
+  .card h2 { margin: 2px 0 0; font-size: 23px; letter-spacing: -.03em; }
+  .card p { margin: 0; color: var(--fg2); font-size: 14.5px; line-height: 1.65; }
+  .cta { margin-top: auto; padding-top: 10px; font-weight: 700; font-size: 14.5px; color: var(--fg3); display: inline-flex; align-items: center; gap: 6px; }
+  .card.live .cta { color: #fff; } .card.live .cta::after { content: "→"; transition: transform .3s var(--ease); } .card.live:hover .cta::after { transform: translateX(5px); }
+
+  .comm { padding: 16px; display: flex; flex-direction: column; gap: 10px; height: 100%; background: linear-gradient(160deg, #181322, #0e1119); }
+  .chips { display: flex; gap: 6px; } .chips span { font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 99px; background: rgba(255,255,255,.07); color: var(--fg3); }
+  .chips span.on { background: rgba(143,123,255,.25); color: #cfc6ff; }
+  .post { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 11px 12px; border-radius: 16px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.07); transition: transform .5s var(--ease); }
+  .card:hover .post:nth-of-type(1) { transform: translateX(4px); } .card:hover .post:nth-of-type(2) { transform: translateX(-4px); }
+  .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #15151a; }
+  .post b { font-size: 12.5px; } .post em { font-style: normal; font-size: 11px; color: var(--fg3); margin-left: 6px; }
+  .post p { font-size: 12.5px !important; line-height: 1.5 !important; color: rgba(245,243,239,.82) !important; margin: 3px 0 7px !important; }
+  .react { display: flex; gap: 14px; font-size: 11.5px; color: var(--fg3); } .react span { display: inline-flex; align-items: center; gap: 5px; } .react svg { width: 13px; height: 13px; }
+  .react .heart { color: #ff8fa3; }
+  .tagline { display: flex; gap: 5px; margin-top: 6px; } .tagline i { font-style: normal; font-size: 10.5px; color: #b9adff; padding: 2px 8px; border-radius: 99px; background: rgba(143,123,255,.16); }
+  .live-pill { position: absolute; right: 14px; top: 14px; display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 99px; font-size: 11.5px; font-weight: 700; background: rgba(10,10,16,.75); border: 1px solid var(--stroke-2); backdrop-filter: blur(10px); }
+  .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; } .eq i { width: 3px; height: 100%; border-radius: 2px; background: var(--accent); transform-origin: bottom; animation: eq .9s ease-in-out infinite; }
+  .eq i:nth-child(2) { animation-delay: -.3s; background: var(--pink); } .eq i:nth-child(3) { animation-delay: -.6s; background: var(--accent2); }
+  @keyframes eq { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+
+  .sheet { padding: 16px 16px 14px; height: 100%; display: flex; flex-direction: column; gap: 10px; background: linear-gradient(160deg, #1b1712, #0f0e0c); }
+  .paper { position: relative; flex: 1; border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, #f7f2e8, #ebe4d4); box-shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.05); }
+  .paper svg { position: absolute; inset: 0; width: 100%; height: 100%; stroke: none; }
+  .playhead { position: absolute; top: 12%; bottom: 12%; left: 14%; width: 2px; border-radius: 2px; background: linear-gradient(180deg, transparent, var(--accent) 20% 80%, transparent); box-shadow: 0 0 14px rgba(255,138,92,.8); animation: play 6s linear infinite; }
+  @keyframes play { from { left: 14%; } to { left: 93%; } }
+  .drop { position: absolute; left: 12px; right: 12px; bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px; border-radius: 11px; border: 1.5px dashed rgba(60,45,30,.4); background: rgba(247,242,232,.85); backdrop-filter: blur(4px); color: #5b4a37; font-size: 11.5px; font-weight: 700; }
+  .drop svg { position: static; width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; }
+  .tools { display: flex; gap: 6px; } .tools span { flex: 1; text-align: center; font-size: 11px; font-weight: 700; padding: 7px 4px; border-radius: 10px; background: rgba(255,255,255,.07); color: var(--fg2); }
+  .tools span.on { background: rgba(255,138,92,.22); color: #ffc7ab; }
+
+  .shot { position: absolute; inset: 0; background: #111 center / cover no-repeat; transition: transform .9s var(--ease); }
+  .card.live:hover .shot { transform: scale(1.05); }
+  .shot::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(8,8,11,.55)); }
+
+  @media (max-width: 980px) {
+    .cards { grid-template-columns: 1fr; width: min(460px, 100%); }
+    .stage { padding-top: 92px; padding-bottom: 48px; gap: 26px; }
+    .preview { aspect-ratio: 4 / 3.4; }
+  }
+  @media (max-width: 560px) { .top { padding: 0 16px; } .me b { max-width: 90px; } }
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="brand"><span class="brand-mark"></span>Ambient</div>
+  <div class="me">
+    <span class="avatar" id="avatar">?</span>
+    <b id="uname">회원</b><span class="guest" id="guestTag" hidden>게스트</span>
+    <button class="logout" id="logout" type="button">로그아웃</button>
+  </div>
+</header>
+
+<main class="stage">
+  <div class="hello">
+    <small>WELCOME</small>
+    <h1>안녕하세요, <span id="hname">회원</span>님</h1>
+    <p>오늘은 무엇을 해볼까요?</p>
+  </div>
+
+  <div class="cards">
+    <article class="card soon" style="--i:0" tabindex="0" role="button" aria-disabled="true" data-name="음악 커뮤니티">
+      <div class="preview">
+        <div class="comm" aria-hidden="true">
+          <div class="chips"><span class="on">추천</span><span>팔로잉</span><span>밴드</span><span>커버</span></div>
+          <div class="post"><span class="av" style="background:linear-gradient(135deg,#ffb17a,#ff6f91)">민</span>
+            <div><b>민지</b><em>방금 전</em><p>새벽에 듣기 좋은 로파이 플레이리스트 공유해요. 취향 나눠 주세요!</p>
+              <div class="react"><span class="heart"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 5 6 5c2 0 3.4 1.1 4 2.4h4C14.6 6.1 16 5 18 5c3.3 0 5.100 3.400 3.600 6.800C19.500 16.400 12 21 12 21z"/></svg>128</span><span><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.600 7.100L3 20l1-4.800A8 8 0 1 1 21 12z"/></svg>24</span></div></div></div>
+          <div class="post"><span class="av" style="background:linear-gradient(135deg,#8f7bff,#5fd0ff)">준</span>
+            <div><b>준호</b><em>12분 전</em><p>이번 주 커버 영상 올렸어요. 피드백 환영합니다.</p>
+              <div class="tagline"><i>#커버</i><i>#어쿠스틱</i></div></div></div>
+          <span class="live-pill"><span class="eq"><i></i><i></i><i></i></span>12명이 듣는 중</span>
+        </div>
+      </div>
+      <div class="body">
+        <span class="badge"><i></i>준비 중</span>
+        <h2>음악 커뮤니티</h2>
+        <p>좋아하는 곡과 플레이리스트를 공유하고, 커버 영상에 피드백을 나누는 공간이에요.</p>
+        <span class="cta">곧 열릴 예정이에요</span>
+      </div>
+    </article>
+
+    <article class="card soon" style="--i:1" tabindex="0" role="button" aria-disabled="true" data-name="악보 업로드·연습">
+      <div class="preview">
+        <div class="sheet" aria-hidden="true">
+          <div class="paper">
+            <svg viewBox="0 0 300 185" preserveAspectRatio="xMidYMid meet">
+              <g stroke="#3a3128" stroke-width="1.1" opacity=".75">
+                <path d="M22 40h268M22 50h268M22 60h268M22 70h268M22 80h268"/>
+                <path d="M22 40v40M290 40v40M112 40v40M200 40v40" stroke-width="1.4"/>
+              </g>
+              <text x="27" y="66" font-family="Georgia, serif" font-weight="700" font-size="17" fill="#3a3128">4</text>
+              <text x="27" y="82" font-family="Georgia, serif" font-weight="700" font-size="17" fill="#3a3128">4</text>
+              <g fill="#2a231b">
+                <g transform="rotate(-18 60 70)"><ellipse cx="60" cy="70" rx="6.4" ry="4.6"/></g><path d="M65.700 68V38" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 82 65)"><ellipse cx="82" cy="65" rx="6.4" ry="4.6"/></g><path d="M87.700 63V33" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 104 60)"><ellipse cx="104" cy="60" rx="6.4" ry="4.6"/></g><path d="M98.300 62v30" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 130 65)"><ellipse cx="130" cy="65" rx="6.4" ry="4.6"/></g><path d="M135.700 63V33" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 152 70)"><ellipse cx="152" cy="70" rx="6.4" ry="4.6"/></g><path d="M135.700 63V33" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 174 55)"><ellipse cx="174" cy="55" rx="6.4" ry="4.6"/></g><path d="M168.300 57v30" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 222 60)"><ellipse cx="222" cy="60" rx="6.4" ry="4.6"/></g><path d="M216.300 62v30" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 246 75)"><ellipse cx="246" cy="75" rx="6.4" ry="4.6"/></g><path d="M251.700 73V43" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 268 65)"><ellipse cx="268" cy="65" rx="6.4" ry="4.6"/></g><path d="M273.700 63V33" stroke="#2a231b" stroke-width="1.6"/>
+                <path d="M65.700 38 87.700 33v5L65.700 43z"/><path d="M135.700 33l22 5v5l-22-5z"/>
+              </g>
+            </svg>
+            <i class="playhead"></i>
+            <div class="drop"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 20h16"/></svg>악보 PDF · 이미지 올리기</div>
+          </div>
+          <div class="tools"><span class="on">0.75x</span><span>A–B 반복</span><span>메트로놈 92</span></div>
+        </div>
+      </div>
+      <div class="body">
+        <span class="badge"><i></i>준비 중</span>
+        <h2>악보 업로드 · 연습</h2>
+        <p>악보를 올리면 속도를 늦추고, 구간을 반복하고, 메트로놈에 맞춰 연습할 수 있어요.</p>
+        <span class="cta">곧 열릴 예정이에요</span>
+      </div>
+    </article>
+
+    <a class="card live" style="--i:2" href="../aurora/">
+      <div class="preview"><div class="shot" style="background-image:url(../shots/aurora.jpg)" role="img" aria-label="Aurora 화면"></div></div>
+      <div class="body">
+        <span class="badge on"><i></i>이용 가능</span>
+        <h2>Aurora 스트리밍</h2>
+        <p>앨범 커버의 색으로 물드는 배경과 곡의 분위기에 반응하는 화면으로 음악을 들어요.</p>
+        <span class="cta">열기</span>
+      </div>
+    </a>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var s = Session.get() || { name: '회원' };
+  var name = s.name || '회원';
+  $('uname').textContent = name; $('hname').textContent = name; $('avatar').textContent = (name.trim()[0] || '?').toUpperCase();
+  if (s.guest) $('guestTag').hidden = false;
+  $('logout').onclick = function () { Session.clear(); location.href = '../'; };
+
+  var toastTimer;
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3000); }
+  document.querySelectorAll('.card.soon').forEach(function (c) {
+    function go() {
+      toast(c.dataset.name + '은(는) 아직 준비 중이에요. 곧 열릴 예정이에요.');
+      c.classList.remove('nudge'); void c.offsetWidth; c.classList.add('nudge');
+    }
+    c.addEventListener('click', go);
+    c.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+</script>
+</body>
+</html>

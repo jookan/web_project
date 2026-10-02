@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Aurora</title>
+<script src="../assets/session.js?v=1"></script>
+<script>Session.require("../");</script>
+<link rel="stylesheet" href="style.css?v=14">
+</head>
+<body>
+  <canvas id="bg" aria-hidden="true"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div class="app" id="app">
+    <aside class="sidebar">
+      <h1 class="logo"><a href="../hub/" title="시작 화면으로">Ambient<span>Player</span></a></h1>
+
+      <section class="panel">
+        <div class="seg" id="modeSeg">
+          <button data-mode="spotify">Spotify</button>
+          <button data-mode="youtube">YouTube</button>
+        </div>
+
+        <div id="spPanel" class="setup" hidden>
+          <p><b>Spotify Premium</b> 계정이 필요해요. 처음 한 번만 설정하면 돼요.</p>
+          <ol>
+            <li><a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> 에서 앱 생성</li>
+            <li>앱의 <b>Redirect URI</b>에 아래 주소를 그대로 추가<br>
+              <code id="redirectUri"></code></li>
+            <li><b>Web Playback SDK</b> 체크 → 저장 후 <b>Client ID</b> 복사</li>
+          </ol>
+          <div class="row">
+            <input id="clientId" type="text" placeholder="Client ID 붙여넣기" autocomplete="off">
+            <button id="spConnect">연결</button>
+          </div>
+        </div>
+        <div id="spStatus" class="row" hidden>
+          <span class="hint" style="flex:1;margin:0">Spotify 연결됨 ✓</span>
+          <button id="spLogout" class="ghost">연결 해제</button>
+        </div>
+
+        <div id="ytPanel" class="setup" hidden>
+          <p><b>YouTube Data API 키</b>가 필요해요. 무료이고 카드 등록은 필요 없어요.</p>
+          <ol>
+            <li><a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud</a>에서 프로젝트 생성</li>
+            <li><a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">YouTube Data API v3</a> → <b>사용</b></li>
+            <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">사용자 인증 정보</a> → <b>API 키 만들기</b> 후 복사</li>
+          </ol>
+          <div class="row">
+            <input id="apiKey" type="text" placeholder="API 키 붙여넣기" autocomplete="off">
+            <button id="keySave">저장</button>
+          </div>
+        </div>
+        <div id="ytStatus" class="row" hidden>
+          <span class="hint" style="flex:1;margin:0">YouTube API 키 저장됨 ✓</span>
+          <button id="keyReset" class="ghost">키 변경</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="row">
+          <select id="playlistSelect" aria-label="플레이리스트 선택"></select>
+          <button id="newPlaylist" title="새 플레이리스트">＋</button>
+          <button id="renamePlaylist" title="이름 변경">✎</button>
+          <button id="deletePlaylist" title="삭제">🗑</button>
+        </div>
+        <ol id="trackList" class="tracks"></ol>
+        <p id="emptyHint" class="hint">아래에서 노래를 검색해 추가하세요.</p>
+      </section>
+
+      <section class="panel">
+        <form id="searchForm" class="row">
+          <input id="searchInput" type="search" placeholder="노래 / 아티스트 검색" autocomplete="off">
+          <button type="submit">검색</button>
+        </form>
+        <ul id="results" class="results"></ul>
+      </section>
+    </aside>
+
+    <main class="stage">
+      <div class="stage-top">
+        <span id="moodChip" class="chip">MOOD · —</span>
+        <button id="immersive" class="ghost" title="몰입 모드 (F)" aria-label="몰입 모드">⛶</button>
+      </div>
+
+      <div class="cover-wrap" id="coverWrap">
+        <img id="glow" class="glow" alt="" aria-hidden="true">
+        <img id="cover" class="cover" alt="앨범 커버">
+        <div id="coverEmpty" class="cover empty">♪</div>
+      </div>
+
+      <div class="meta">
+        <h2 id="title">재생할 노래가 없어요</h2>
+        <p id="artist">플레이리스트에 노래를 추가하고 ▶ 를 눌러보세요</p>
+        <p id="album" class="album"></p>
+      </div>
+
+      <div class="progress">
+        <span id="cur">0:00</span>
+        <div class="seek-wrap" id="seekWrap">
+          <input id="seek" type="range" min="0" max="1000" value="0" aria-label="재생 위치">
+          <span class="seek-tip" id="seekTip">0:00</span>
+        </div>
+        <span id="dur">0:00</span>
+      </div>
+
+      <div class="controls">
+        <button id="shuffle" class="ghost" title="셔플" aria-label="셔플">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></svg>
+        </button>
+        <button id="prev" title="이전" aria-label="이전">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 20 9 12l10-8z"/><path d="M5 19V5" fill="none"/></svg>
+        </button>
+        <button id="play" class="big" title="재생/일시정지 (Space)" aria-label="재생/일시정지"></button>
+        <button id="next" title="다음" aria-label="다음">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 4 10 8-10 8z"/><path d="M19 5v14" fill="none"/></svg>
+        </button>
+        <button id="loop" class="ghost" title="반복" aria-label="반복">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+        </button>
+        <div class="vol-wrap" id="volWrap">
+          <button id="volBtn" class="ghost" title="음소거 (클릭) · 마우스를 올리면 볼륨 조절" aria-label="음소거">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path id="volWave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+          </button>
+          <div class="vol-pop"><input id="vol" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="볼륨" orient="vertical"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="ytBox" class="ytbox"><div id="ytPlayer"></div></div>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="app.js?v=11"></script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+:root { --breath: 5s; --fg: #fff; --accent: #ff8a5c; --accent2: #7c5cff; --bar1: #ff5c8a; --bar2: #ffb347; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: #0a0a10; color: var(--fg); overflow: hidden;
+  font-family: 'Pretendard', 'Segoe UI', system-ui, 'Malgun Gothic', sans-serif;
+}
+
+/* ---------- 앰비언트 배경 ---------- */
+#bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; filter: saturate(1.25); }
+.vignette { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.5) 100%); }
+
+/* ---------- 레이아웃 ---------- */
+.app { position: relative; z-index: 1; display: grid; grid-template-columns: 340px 1fr; height: 100%; }
+.sidebar { padding: 20px 16px; overflow-y: auto; background: rgba(0,0,0,.3);
+  backdrop-filter: blur(24px); border-right: 1px solid rgba(255,255,255,.08);
+  transition: transform .5s ease, opacity .5s ease; }
+.logo { font-size: 20px; margin: 0 0 16px; font-weight: 800; letter-spacing: -.02em; }
+.logo span { font-weight: 300; opacity: .7; margin-left: 4px; }
+.logo a { color: inherit; text-decoration: none; }
+.logo a:hover { opacity: .8; }
+.panel { margin-bottom: 22px; }
+.row { display: flex; gap: 6px; margin-bottom: 10px; }
+.row > select, .row > input { flex: 1; min-width: 0; }
+
+button, select, input[type=search], input[type=text] {
+  font: inherit; color: inherit; border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.1); border-radius: 10px; padding: 8px 10px; cursor: pointer;
+}
+select option { color: #000; }
+input[type=search], input[type=text] { cursor: text; }
+button:hover { background: rgba(255,255,255,.2); }
+button.ghost { background: transparent; border-color: transparent; opacity: .7; }
+button.ghost.on { opacity: 1; background: rgba(255,255,255,.18); }
+
+.seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(255,255,255,.08); margin-bottom: 10px; }
+.seg button { flex: 1; border: 0; background: transparent; font-size: 13px; }
+.seg button.on { background: rgba(255,255,255,.9); color: #111; font-weight: 700; }
+.setup { font-size: 13px; line-height: 1.5; background: rgba(255,255,255,.07); border-radius: 12px; padding: 10px 12px; }
+.setup p { margin: 0 0 6px; } .setup ol { margin: 0 0 10px; padding-left: 18px; }
+.setup a { color: #9ed0ff; }
+.setup code { display: block; margin: 4px 0; padding: 4px 6px; background: rgba(0,0,0,.35); border-radius: 6px; user-select: all; word-break: break-all; }
+
+.tracks, .results { list-style: none; margin: 0; padding: 0; }
+.tracks li, .results li { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; }
+.tracks li { cursor: pointer; }
+.tracks li:hover, .results li:hover { background: rgba(255,255,255,.08); }
+.tracks li.active { background: rgba(255,255,255,.18); }
+.tracks li.dim { opacity: .4; }
+.tracks img, .results img { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex: none; }
+.tinfo { flex: 1; min-width: 0; }
+.tinfo b, .tinfo small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tinfo small { opacity: .65; }
+.mini { padding: 4px 8px; border-radius: 8px; flex: none; }
+.hint { opacity: .55; font-size: 13px; margin: 6px 2px; }
+
+/* ---------- 스테이지 ---------- */
+.stage { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px; gap: 18px; min-width: 0; position: relative; }
+.stage-top { position: absolute; top: 16px; left: 24px; right: 24px; display: flex; justify-content: space-between; align-items: center; }
+.chip { padding: 6px 14px; border-radius: 999px; background: rgba(255,255,255,.14);
+  backdrop-filter: blur(10px); font-size: 13px; letter-spacing: .08em; }
+
+.cover-wrap { position: relative; width: min(52vh, 46vw); aspect-ratio: 1; }
+.cover, .glow { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 18px; }
+.cover { box-shadow: 0 30px 80px rgba(0,0,0,.5); transition: opacity .6s ease, transform .6s ease; }
+.cover.empty { display: grid; place-items: center; font-size: 80px; background: rgba(255,255,255,.08); }
+/* 앰비라이트: 커버를 크게 흐려서 뒤에 깔아 TV 백라이트처럼 번지게 */
+.glow { filter: blur(60px) saturate(1.8); transform: scale(1.35); opacity: .9; z-index: -1;
+  animation: breathe var(--breath) ease-in-out infinite; transition: opacity .6s ease; }
+@keyframes breathe { 50% { transform: scale(1.5); opacity: 1; } }
+.swap .cover { opacity: 0; transform: scale(.96); }
+.swap .glow { opacity: 0; }
+
+/* ---------- 클라이맥스 연출 (body.climax) ---------- */
+#bg { transition: filter 2s ease; }
+.vignette::after { content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 2s ease;
+  background: radial-gradient(ellipse at center, transparent 25%, rgba(0,0,0,.85) 100%); }
+.climax #bg { filter: saturate(1.9) brightness(1.25) contrast(1.1); }
+.climax .vignette::after { opacity: 1; }
+.climax .glow { animation: climax-glow calc(var(--breath) * .5) ease-in-out infinite; filter: blur(70px) saturate(2.4) brightness(1.3); }
+@keyframes climax-glow { 50% { transform: scale(1.75); opacity: 1; } }
+
+.meta { text-align: center; max-width: 90%; }
+.meta h2 { margin: 0; font-size: clamp(24px, 4vw, 44px); letter-spacing: -.02em; text-shadow: 0 2px 20px rgba(0,0,0,.4); }
+.meta p { margin: 6px 0 0; font-size: clamp(14px, 1.6vw, 20px); opacity: .85; }
+.meta .album { font-size: 13px; opacity: .55; }
+
+.progress { display: flex; align-items: center; gap: 10px; width: min(560px, 90%); font-size: 12px; font-variant-numeric: tabular-nums; }
+/* 진행바: 강조색 그라데이션 + 빛, 호버 시 두꺼워짐 + 시간 말풍선, 클라이맥스 구간 표시 */
+.progress { gap: 12px; }
+.seek-wrap { position: relative; flex: 1; height: 24px; display: flex; align-items: center; }
+#seek { -webkit-appearance: none; appearance: none; position: relative; width: 100%; height: 24px; margin: 0; padding: 0; background: transparent; cursor: pointer;
+  --p: 0%; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--bar2) 70%, transparent)); }
+#seek::-webkit-slider-runnable-track { height: 7px; border-radius: 99px; transition: height .2s ease;
+  background: linear-gradient(90deg, var(--bar1) 0%, var(--bar2) var(--p), rgba(255,255,255,.30) var(--p));
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.06); }
+#seek:hover::-webkit-slider-runnable-track, #seek:active::-webkit-slider-runnable-track { height: 10px; }
+#seek::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -3.5px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--bar2) 45%, transparent), 0 2px 8px rgba(0,0,0,.5);
+  transform: scale(.85); transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
+#seek:hover::-webkit-slider-thumb, #seek:active::-webkit-slider-thumb { transform: scale(1.3); margin-top: -2px; }
+#seek::-moz-range-track { height: 5px; border-radius: 99px; background: rgba(255,255,255,.16); }
+#seek::-moz-range-progress { height: 5px; border-radius: 99px; background: var(--accent); }
+#seek::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #fff; }
+.seek-tip { position: absolute; bottom: calc(100% - 2px); left: 0; transform: translateX(-50%); padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 600;
+  background: rgba(0,0,0,.78); border: 1px solid rgba(255,255,255,.16); opacity: 0; pointer-events: none; transition: opacity .15s; white-space: nowrap; }
+.seek-wrap:hover .seek-tip { opacity: 1; }
+/* 컨트롤: 진행바와 같은 폭의 영역 가운데에 버튼을 두고, 작은 세로 볼륨은 오른쪽 끝에 붙여요 */
+.controls { position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; width: min(560px, 90%); }
+.controls button { position: relative; display: grid; place-items: center; border-radius: 50%; width: 44px; height: 44px; padding: 0;
+  transition: transform .15s ease, background .2s ease, opacity .2s ease; }
+.controls button svg { width: 22px; height: 22px; }
+.controls button:active { transform: scale(.9); }
+.controls .big { width: 64px; height: 64px; background: rgba(255,255,255,.92); color: #111; border: 0; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+.controls .big svg { width: 28px; height: 28px; }
+.controls .big:hover { background: #fff; transform: scale(1.06); }
+/* 셔플/반복 켜짐: 밝아지고 아래에 점 표시 */
+.controls button.ghost.on { color: #fff; background: rgba(255,255,255,.16); box-shadow: 0 0 18px rgba(255,255,255,.25); }
+.controls button.ghost.on::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: #fff; }
+/* 볼륨: 평소엔 스피커 아이콘만 보이고, 마우스를 올리면 세로 슬라이더가 위로 떠올라요 */
+.vol-wrap { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.vol-pop { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translate(-50%, 8px); padding: 14px 12px; border-radius: 16px;
+  background: rgba(18,18,26,.62); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 12px 32px rgba(0,0,0,.45);
+  opacity: 0; visibility: hidden; transition: opacity .2s ease, transform .3s cubic-bezier(.34,1.56,.64,1), visibility .2s; }
+.vol-pop::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 14px; }   /* 아이콘과 팝업 사이를 지나가도 안 닫히게 */
+.vol-wrap:hover .vol-pop, .vol-wrap:has(:focus-visible) .vol-pop { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+#vol { --v: 80%; -webkit-appearance: none; appearance: none; writing-mode: vertical-lr; direction: rtl; width: 16px; height: 62px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
+#vol::-webkit-slider-runnable-track { width: 5px; border-radius: 99px; background: linear-gradient(0deg, var(--bar2) var(--v), rgba(255,255,255,.3) var(--v)); box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+#vol::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-left: -3.5px; border-radius: 50%; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.5); }
+#vol::-moz-range-track { width: 5px; border-radius: 99px; background: rgba(255,255,255,.3); }
+#vol::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: #fff; }
+
+input[type=range] { accent-color: #fff; -webkit-appearance: auto; padding: 0; background: none; border: 0; }
+
+/* YouTube 플레이어: YouTube 모드에서만 표시 */
+.ytbox { position: fixed; right: 20px; bottom: 20px; z-index: 5; width: 356px; height: 200px; border-radius: 14px; overflow: hidden;
+  background: #000; box-shadow: 0 16px 50px rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.15);
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .6s ease, visibility .6s; }
+.ytbox iframe { width: 100%; height: 100%; display: block; }
+body.mode-youtube .ytbox { opacity: 1; visibility: visible; pointer-events: auto; }
+body.mode-youtube.immersive .ytbox { opacity: 0; pointer-events: none; }   /* 몰입 모드: 화면에서만 숨기고 재생은 계속 */
+@media (max-width: 800px) { .ytbox { right: 8px; bottom: 8px; width: 240px; height: 200px; } }
+
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); z-index: 10;
+  background: rgba(0,0,0,.75); backdrop-filter: blur(10px); padding: 10px 18px; border-radius: 999px;
+  font-size: 14px; opacity: 0; pointer-events: none; transition: .3s; max-width: 90vw; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- 몰입 모드 ---------- */
+.immersive .sidebar { transform: translateX(-100%); opacity: 0; position: absolute; height: 100%; width: 340px; pointer-events: none; }
+.immersive .app { grid-template-columns: 1fr; }
+/* 몰입 모드: 재생바·컨트롤은 서서히 사라지고, 마우스를 화면 아래쪽으로 가져가거나 키를 누르면 나타나요 */
+.immersive .controls, .immersive .progress { opacity: 0; pointer-events: none; transition: opacity 1.1s ease 1.2s; }
+.immersive #immersive { opacity: 0; transition: opacity .8s ease 1.2s; }
+.immersive.bar-show .controls, .immersive.bar-show .progress { opacity: 1; pointer-events: auto; transition: opacity .4s ease; }
+.immersive.btn-show #immersive { opacity: 1; transition: opacity .3s ease; }
+
+@media (max-width: 800px) {
+  body { overflow: auto; }
+  .app { grid-template-columns: 1fr; height: auto; min-height: 100%; }
+  .stage { order: -1; min-height: 100vh; }
+  .cover-wrap { width: 70vw; }
+}

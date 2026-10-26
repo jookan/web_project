@@ -1,50 +1,71 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
-    <head>
-        <meta charset="UTF-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="author" content="이주환">
-        <title>악보 업로드 페이지</title>
-        <link rel="stylesheet" href="web_programming/css/upload.css"/>
-    </head>
-    <body>
-        <header class="header">
-            <h1 class="default">악보 조회</h1>
-        </header>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="이주환">
+    <title>악보 업로드 페이지</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="./web_programming/css/upload.css">
+</head>
+<body>
+    <header class="header">
+        <h1>악보 조회</h1>
+    </header>
 
-        <div class="main-container">
-            <nav class="sidebar">
-                <div class="select-box">
-                    <h3>내 악보들</h3>
-                    <div class="button-group">
-                        <button type="button">악보 1</button>
-                        <button type="button">악보 2</button>
-                        <button type="button">악보 3</button>
-                    </div>
-                    <div class="upload-box">
-                        <button type="button" class="btn-upload">악보 업로드</button>
-                    </div>
+    <main class="main-container">
+        <aside class="sidebar" aria-label="악보 목록과 연습 설정">
+            <section class="select-box" aria-labelledby="library-title">
+                <h2 id="library-title">내 악보들</h2>
+                <p class="library-empty">추가한 악보가 여기에 표시돼요.</p>
+                <div class="button-group" aria-label="추가한 PDF 악보"></div>
+                <div class="upload-box">
+                    <input id="Sheet-file" type="file" accept=".pdf,application/pdf" hidden>
+                    <button type="button" class="btn-upload" disabled>악보 업로드</button>
                 </div>
-            </nav>
+                <p class="hint">새로고침하면 악보 목록이 초기화돼요.</p>
+            </section>
 
-            <section class="content-section">
-                <article>
-                    <div class="sheet">
-                        <img src="./imgs/test.jpg" alt="악보 이미지">
-                    </div>
-                </article>
-                <footer class="sheet-footer">
-                    <div class="controls">
-                        <label>BPM <input type="number" class="short-input" value="120"></label>
-                        <label>마디수 <input type="number" class="short-input" value="16"></label>
-                        <button type="button">악보 넘기기 시작</button>
-                        <br><br>
-                        <span>메트로놈 소리 들려주기</span>
+            <section class="sheet-footer" aria-labelledby="practice-title">
+                <h2 id="practice-title">연습 설정</h2>
+                <fieldset  id="practice-controls" class="controls" disabled>
+                    <legend class="visually-hidden">자동 넘기기와 메트로놈 설정</legend>
+                    <label>BPM <input id="bpm-input" type="number" class="short-input" min="1" value="120"></label>
+                    <label>마디당 박 수
+                        <input id="beats-input" type="number" class="short-input" min="1" value="4">
+                    </label>
+                    <div id="practice-steps"></div>
+                    <button type="button" disabled>악보 넘기기 시작</button>
+                    <span>메트로놈 소리 들려주기</span>
+                    <div class="metronome-buttons">
                         <button type="button">Yes</button>
                         <button type="button">No</button>
                     </div>
-                </footer>
+                </fieldset>
+                <p class="hint">자동 넘기기와 메트로놈은 준비 중이에요.</p>
             </section>
-        </div>
-    </body>
+        </aside>
+
+        <section class="content-section" aria-labelledby="score-title">
+            <div class="viewer-toolbar">
+                <h2 id="score-title">악보를 선택해 주세요</h2>
+                <nav class="page-controls" aria-label="PDF 페이지 이동">
+                    <button type="button" id="previous-page" aria-label="이전 페이지" disabled>이전</button>
+                    <span id="page-count" aria-live="polite">0 / 0</span>
+                    <button type="button" id="next-page" aria-label="다음 페이지" disabled>다음</button>
+                </nav>
+            </div>
+            <div class="sheet" aria-busy="false">
+                <div class="empty-state">
+                    <strong>PDF 악보를 추가해 주세요</strong>
+                    <p>페이지 비율을 유지하며 화면에 맞춰 보여드려요.</p>
+                </div>
+                <canvas id="sheet-canvas" role="img" aria-label="선택한 PDF 악보 페이지" hidden></canvas>
+            </div>
+            <p id="viewer-status" class="viewer-status" role="status">PDF 뷰어를 준비하고 있어요.</p>
+        </section>
+    </main>
+
+    <script type="module" src="./scripts/sheet_functions.js"></script>
+</body>
 </html>

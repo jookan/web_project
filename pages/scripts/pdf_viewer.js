@@ -12,6 +12,7 @@ let displayedScore = null;
 let renderNumber = 0;
 let renderTask = null;
 let resizeTimer;
+let resizePending = false;
 
 export function showStatus(message, isError = false) {
     status.textContent = message;
@@ -52,7 +53,7 @@ export async function loadPdfFile(file) {
 }
 
 export async function renderPage(score) {
-    if (!score) return;
+    if (!score) return false;
     displayedScore = score;
 
     // 이전 그리기 작업이 늦게 끝나도 새 페이지를 덮어쓰지 않게 한다.
@@ -71,13 +72,13 @@ export async function renderPage(score) {
 
     try {
         const page = await score.pdf.getPage(pageNumber);
-        if (currentRender !== renderNumber) return;
+        if (currentRender !== renderNumber) return false;
 
         const originalSize = page.getViewport({ scale: 1 });
         const style = getComputedStyle(sheet);
         const availableWidth = sheet.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
         const availableHeight = sheet.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-        if (availableWidth < 1 || availableHeight < 1) return;
+        if (availableWidth < 1 || availableHeight < 1) return false;
 
         const scale = Math.min(
             availableWidth / originalSize.width,
@@ -95,7 +96,7 @@ export async function renderPage(score) {
             transform: [pixelRatio, 0, 0, pixelRatio, 0, 0]
         });
         await renderTask.promise;
-        if (currentRender !== renderNumber) return;
+        if (currentRender !== renderNumber) return false;
 
         canvas.width = buffer.width;
         canvas.height = buffer.height;
@@ -105,15 +106,21 @@ export async function renderPage(score) {
         canvas.setAttribute("aria-label", score.name + ", " + pageNumber + " / " + score.pdf.numPages + " 페이지");
         canvas.hidden = false;
         showStatus("화면 크기에 맞춰 표시해요. ← → 방향키로 페이지를 넘길 수 있어요.");
+        return true;
     } catch (error) {
-        if (currentRender !== renderNumber || error.name === "RenderingCancelledException") return;
+        if (currentRender !== renderNumber || error.name === "RenderingCancelledException") return false;
         console.error(error);
         emptyState.hidden = false;
         showStatus("이 페이지를 표시하지 못했어요. 다른 페이지나 PDF를 선택해 주세요.", true);
+        return false;
     } finally {
         if (currentRender === renderNumber) {
             renderTask = null;
             sheet.setAttribute("aria-busy", "false");
+            if (resizePending) {
+                resizePending = false;
+                scheduleResize();
+            }
         }
     }
 }
@@ -121,6 +128,10 @@ export async function renderPage(score) {
 function scheduleResize() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
+        if (sheet.getAttribute("aria-busy") === "true") {
+            resizePending = true;
+            return;
+        }
         if (displayedScore) renderPage(displayedScore);
     }, 100);
 }

@@ -23,26 +23,40 @@
                     <input id="Sheet-file" type="file" accept=".pdf,application/pdf" hidden>
                     <button type="button" class="btn-upload" disabled>악보 업로드</button>
                 </div>
-                <p class="hint">새로고침하면 악보 목록이 초기화돼요.</p>
+                <p id="storage-status" class="hint" role="status">이 브라우저에 악보와 설정을 저장해요.</p>
             </section>
 
             <section class="sheet-footer" aria-labelledby="practice-title">
                 <h2 id="practice-title">연습 설정</h2>
-                <fieldset  id="practice-controls" class="controls" disabled>
-                    <legend class="visually-hidden">자동 넘기기와 메트로놈 설정</legend>
-                    <label>BPM <input id="bpm-input" type="number" class="short-input" min="1" value="120"></label>
+                <fieldset id="practice-controls" class="controls" disabled>
+                    <legend class="visually-hidden">연주 속도와 페이지 순서</legend>
+                    <label>BPM <input id="bpm-input" type="number" class="short-input" min="1" step="any" value="120"></label>
                     <label>마디당 박 수
                         <input id="beats-input" type="number" class="short-input" min="1" value="4">
                     </label>
-                    <div id="practice-steps"></div>
-                    <button type="button" disabled>악보 넘기기 시작</button>
-                    <span>메트로놈 소리 들려주기</span>
-                    <div class="metronome-buttons">
-                        <button type="button">Yes</button>
-                        <button type="button">No</button>
+                    <strong>연주 순서</strong>
+                    <div id="practice-steps-panel" class="practice-step-editor">
+                        <div class="practice-step-head" aria-hidden="true">
+                            <span>순서</span><span>페이지</span><span>마디</span><span></span>
+                        </div>
+                        <div id="practice-steps" aria-label="연주 단계 편집"></div>
                     </div>
+                    <button type="button" id="add-practice-step">현재 페이지 추가</button>
+                    <p id="practice-summary" class="hint">악보를 선택하면 순서를 편집할 수 있어요.</p>
                 </fieldset>
-                <p class="hint">자동 넘기기와 메트로놈은 준비 중이에요.</p>
+                <div class="auto-turn-panel">
+                    <div class="auto-turn-controls">
+                        <button type="button" id="start-auto-turn" disabled>처음부터 시작</button>
+                        <button type="button" id="stop-auto-turn" disabled>정지</button>
+                    </div>
+                    <p id="auto-turn-status" class="playback-status" aria-live="off">연주 순서대로 자동으로 페이지를 넘겨요.</p>
+                </div>
+                <p class="hint">반복할 페이지를 순서에 다시 넣어 주세요. BPM의 한 박과 마디당 박 수의 기준을 맞춰 주세요.</p>
+                <fieldset class="metronome-settings">
+                    <legend>메트로놈</legend>
+                    <label><input type="checkbox" id="metronome-enabled"> 자동 넘기기 중 소리 켜기</label>
+                    <p class="hint">각 마디의 첫 박을 강조해요.</p>
+                </fieldset>
             </section>
         </aside>
 

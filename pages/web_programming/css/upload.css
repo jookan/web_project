@@ -67,7 +67,7 @@ h2 {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: 270px minmax(0, 1fr);
     gap: 20px;
     width: 100%;
     max-width: 1280px;
@@ -269,17 +269,107 @@ h2 {
     white-space: nowrap;
 }
 
-#practice-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+.practice-step-editor {
     max-height: 220px;
     overflow-y: auto;
+    border: 1px solid #e2e6ed;
+    border-radius: 7px;
+}
+
+.practice-step-head, .practice-step {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 26px;
+    align-items: center;
+    gap: 6px;
+    padding: 5px;
+}
+
+.practice-step-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f5f7fa;
+    color: #687386;
+    font-size: 11px;
+    text-align: center;
+}
+
+.practice-step {
+    border-top: 1px solid #edf0f4;
+}
+
+.practice-step.is-active {
+    background: #e6f0ff;
+    box-shadow: inset 3px 0 #426ea8;
+}
+
+.step-order {
+    font-size: 12px;
+    text-align: center;
 }
 
 #practice-steps .short-input {
-    width: 64px;
-    flex-shrink:0;
+    min-width: 0;
+    width: 100%;
+    padding: 6px 2px;
+    font-size: 13px;
+}
+
+.remove-step {
+    padding: 4px;
+    border: 0;
+    color: #9a4141;
+    font-size: 18px;
+}
+
+#practice-summary {
+    margin: 0;
+}
+
+.auto-turn-panel {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: 12px;
+    padding: 10px 0 6px;
+    border-top: 1px solid #e4e7ec;
+    background: #fff;
+}
+
+.auto-turn-controls {
+    display: flex;
+    gap: 8px;
+}
+
+#start-auto-turn {
+    flex: 1;
+    background: #334f73;
+    color: #fff;
+}
+
+.playback-status {
+    min-height: 42px;
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.7;
+    font-variant-numeric: tabular-nums;
+}
+
+.playback-status.is-error, .hint.is-error {
+    color: #b42318;
+}
+
+.metronome-settings {
+    min-width: 0;
+    margin: 16px 0 0;
+    padding: 8px 0 0;
+    border: 0;
+    border-top: 1px solid #e4e7ec;
+}
+
+.metronome-settings legend {
+    color: #687386;
+    font-size: 12px;
 }
 
 @media (max-width: 680px) {
@@ -300,16 +390,16 @@ h2 {
 
     .sidebar {
         max-height: 30dvh;
-        flex-direction: row;
+        flex-direction: column;
         gap: 10px;
     }
 
     .select-box, .sheet-footer {
-        flex: 1;
+        flex: none;
         min-width: 0;
         min-height: 0;
         padding: 12px;
-        overflow-y: auto;
+        overflow-y: visible;
     }
 
     .button-group {

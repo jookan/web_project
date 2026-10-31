@@ -98,3 +98,20 @@ node --test tests/auto_turn.test.mjs
 
 - 유튜브 API 검색/재생 연동 (`home.js`의 `playSong`)
 - 백엔드 연동: API 키를 서버로 이동, 플레이리스트를 DB에 저장
+
+## Ambient 통합 화면
+
+로컬 웹 서버로 루트 `index.html`을 열면 Ambient 로그인/게스트 화면과 시작 화면으로 이동합니다.
+시작 화면의 `악보 업로드 · 연습` 카드에서 기존 PDF 연습 기능을 이용할 수 있고,
+Aurora와 악보 화면의 상단 메뉴로 두 화면을 오갈 수 있습니다.
+
+- Ambient 플레이어: `ambient/aurora/index.html`
+- 악보 연습: `pages/sheet_uploading.html`
+- 기존 음악 추천: `pages/home.html`
+- 기존 커뮤니티: `pages/community.html`
+
+Aurora의 재생 JavaScript와 기존 CSS, PDF 연습 모듈과 기존 `upload.css`는 그대로 유지합니다.
+악보 화면에는 별도 `ambient/assets/practice.css`로 Ambient 스타일을 적용합니다.
+Ambient 로그인은 기존 브라우저 데모 방식이며, Spotify·YouTube 연결은 기존 계정/API 설정을 사용합니다.
+Spotify 앱의 Redirect URI는 실제로 접속하는 `ambient/aurora/` 주소와 일치해야 합니다.
+악보와 플레이리스트는 사이트 주소별 브라우저 저장소를 사용하므로 다른 배포 주소의 자료가 자동 이전되지는 않습니다.

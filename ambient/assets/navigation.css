@@ -1,0 +1,6 @@
+/* Navigation only; Aurora's own stylesheet and playback code are unchanged. */
+[hidden] { display: none !important; }
+.site-nav { display: flex; gap: 6px; margin: 0 0 22px; }
+.site-nav a { padding: 8px 10px; border-radius: 10px; text-decoration: none; color: rgba(255,255,255,.65); font-size: 12px; }
+.site-nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+.site-nav a[aria-current] { background: rgba(255,138,92,.14); color: #ffc7ab; }

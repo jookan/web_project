@@ -65,3 +65,36 @@ PDF 악보를 한 페이지씩 보면서 연주 순서와 속도를 설정하고
 ```sh
 node --test tests/auto_turn.test.mjs
 ```
+
+
+## 음악 디깅 플레이리스트 페이지
+
+플레이리스트에 담은 곡의 장르를 분석해서 **비슷한 장르 / 다른 장르**의 곡을 추천하는 페이지입니다.
+장르 정보는 Last.fm과 MusicBrainz API에서 가져옵니다.
+
+## 실행 방법
+
+1. 이 저장소를 clone합니다.
+2. `pages/scripts/config.example.js`를 같은 폴더에 `config.js`로 복사합니다.
+   ```
+   cp pages/scripts/config.example.js pages/scripts/config.js
+   ```
+3. [Last.fm API 계정](https://www.last.fm/api/account/create)을 만들어 API key를 발급받고,
+   `config.js`의 `YOUR_LASTFM_API_KEY`를 발급받은 키로 바꿉니다.
+   (Shared secret은 필요 없습니다. 올리지 마세요.)
+4. `home.html`을 브라우저로 엽니다. (VS Code의 Live Server 확장 사용을 권장)
+
+`config.js`는 `.gitignore`에 등록되어 있어서 GitHub에 올라가지 않습니다.
+
+## 동작 방식
+
+- 검색: Last.fm `track.search`
+- 곡 장르: Last.fm 곡 태그 -> 가수 태그 -> MusicBrainz 순서로 조회
+- 비슷한 장르 추천: 플레이리스트 상위 장르의 인기곡 (`tag.getTopTracks`)
+- 다른 장르 추천: 플레이리스트와 겹치지 않는 장르 후보에서 선택
+- 플레이리스트는 브라우저 localStorage에 저장됩니다. (백엔드 연동 전 임시)
+
+## TODO
+
+- 유튜브 API 검색/재생 연동 (`home.js`의 `playSong`)
+- 백엔드 연동: API 키를 서버로 이동, 플레이리스트를 DB에 저장

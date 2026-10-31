@@ -1,0 +1,36 @@
+/* Presentation only. The original PDF layout and all practice scripts stay intact. */
+body { color: var(--fg); background: #0a0a10; font-family: 'Pretendard','Segoe UI',system-ui,'Malgun Gothic',sans-serif; }
+.header { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 28px; border-bottom: 1px solid var(--stroke); background: rgba(10,10,16,.45); }
+.header h1 { color: var(--fg2); font-size: 14px; font-weight: 500; }
+.site-nav { display: flex; align-items: center; gap: 6px; }
+.site-nav a { padding: 9px 13px; border-radius: 10px; text-decoration: none; color: var(--fg2); font-size: 13px; }
+.site-nav a:hover { background: rgba(255,255,255,.08); color: #fff; }
+.site-nav a[aria-current] { background: rgba(255,138,92,.14); color: #ffc7ab; }
+.main-container { position: relative; z-index: 1; max-width: 1600px; grid-template-columns: 310px minmax(0,1fr); padding-top: 20px; gap: 24px; }
+.sidebar { scrollbar-width: thin; scrollbar-color: #51465d transparent; }
+.select-box, .sheet-footer { border-color: var(--stroke); border-radius: 18px; background: var(--glass); backdrop-filter: blur(24px); }
+h2 { font-weight: 650; letter-spacing: -.02em; }
+.library-empty, .hint, .viewer-status, .metronome-settings legend { color: var(--fg3); }
+button, .short-input { border-color: var(--stroke-2); border-radius: 10px; background: rgba(255,255,255,.06); color: var(--fg); }
+button:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+button:focus-visible, input:focus-visible { outline-color: #ffb17a; }
+.btn-upload, #start-auto-turn { background: #f5f3ef; color: #17141c; border-color: transparent; font-weight: 700; }
+.btn-upload:hover:not(:disabled), #start-auto-turn:hover:not(:disabled) { background: #fff; }
+.button-group button[aria-pressed="true"] { color: #ffc7ab; background: rgba(255,138,92,.14); border-color: rgba(255,138,92,.4); }
+.upload-box, .auto-turn-panel, .metronome-settings, .practice-step { border-color: var(--stroke); }
+.practice-step-editor { border-color: var(--stroke); border-radius: 10px; }
+.practice-step-head { color: var(--fg3); background: #211e2c; }
+.practice-step.is-active { background: rgba(255,138,92,.13); box-shadow: inset 3px 0 var(--accent); }
+.remove-step { color: #ff9aaf; }
+.auto-turn-panel { background: #1a1723; border-radius: 0 0 10px 10px; }
+input[type=checkbox] { accent-color: var(--accent); }
+.viewer-toolbar { min-height: 42px; }
+#page-count { color: var(--fg2); }
+.sheet { background: rgba(13,12,20,.55); border-color: var(--stroke); border-radius: 18px; box-shadow: inset 0 0 80px rgba(124,92,255,.035); }
+#sheet-canvas { color-scheme: light; box-shadow: 0 18px 60px rgba(0,0,0,.4); }
+.empty-state { color: var(--fg3); }
+.empty-state::before { content: '♫'; display: block; margin-bottom: 20px; color: #ffc7ab; font-size: 56px; line-height: 1; }
+.empty-state strong { color: var(--fg); font-size: 20px; font-weight: 600; }
+.viewer-status.is-error, .playback-status.is-error, .hint.is-error { color: #ff9aaf; }
+@media (max-width: 800px) { .header { flex-wrap: wrap; padding: 14px 16px; gap: 10px; } .header h1 { display: none; } .main-container { gap: 14px; grid-template-columns: 270px minmax(0,1fr); } }
+@media (max-width: 680px) { .main-container { grid-template-columns: minmax(0,1fr); padding-top: 12px; } .site-nav a { padding: 8px; font-size: 12px; } .header .brand { font-size: 17px; } .sidebar { max-height: 30dvh; } }

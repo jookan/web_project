@@ -19,7 +19,8 @@
   }
 
   function getCurrentUser() {
-    return readJSON(sessionStorage, CURRENT_KEY) || readJSON(localStorage, CURRENT_KEY);
+    return readJSON(sessionStorage, CURRENT_KEY) || readJSON(localStorage, CURRENT_KEY)
+      || (window.Session ? window.Session.get() : null);
   }
 
   function myName() {
@@ -135,13 +136,14 @@
           sessionStorage.removeItem(CURRENT_KEY);
           localStorage.removeItem(CURRENT_KEY);
         } catch (err) { /* 무시 */ }
-        window.location.href = 'login.html';
+        if (window.Session) window.Session.clear();
+        window.location.href = 'ambient_login.html';
       });
       userArea.appendChild(nameLink);
       userArea.appendChild(logoutLink);
     } else {
       const loginLink = document.createElement('a');
-      loginLink.href = 'login.html';
+      loginLink.href = 'ambient_login.html';
       loginLink.textContent = '로그인';
       userArea.appendChild(loginLink);
     }

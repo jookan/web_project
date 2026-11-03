@@ -1,5 +1,23 @@
 # 웹 페이지 설명
 
+## Firebase 전환 방향
+
+백엔드는 Firebase Authentication(회원가입·로그인), Cloud Firestore(게시글·사용자 정보·악보 설정·플레이리스트),
+Cloud Storage(PDF 악보·첨부 파일)를 사용하는 방향으로 정했습니다. 기존 로컬 DB 구성은 제거했습니다.
+
+아직 Firebase 프로젝트 설정과 SDK는 연결하지 않았습니다. 현재 로그인은 브라우저 데모이며,
+커뮤니티는 localStorage, 악보는 IndexedDB를 사용합니다. 프로젝트의 웹 앱 설정을 연결한 다음
+인증과 사용자별 접근 규칙, 커뮤니티, 악보 저장 순서로 전환합니다.
+
+## 진입 파일과 배포 설정
+
+- 루트 `index.html`: 사이트 루트 주소로 접속했을 때 `pages/ambient_login.html`로 보내는 진입점입니다.
+- `pages/index.html`: `/pages/` 주소로 접속했을 때 같은 폴더의 로그인 화면으로 보냅니다.
+- `.nojekyll`: GitHub Pages에서 Jekyll 변환 없이 정적 파일을 배포하기 위한 빈 설정 파일입니다.
+  Firebase DB 사용 여부와는 별개입니다. 현재 정적 사이트 배포 구성을 유지하므로 함께 보관합니다.
+
+[GitHub Pages의 진입 파일과 Jekyll 설정 설명](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site)
+
 ## 악보 업로드 및 조회 페이지
 
 PDF 악보를 한 페이지씩 보면서 연주 순서와 속도를 설정하고, 설정한 시간에 맞춰 페이지를 자동으로 넘기는 연습 기능입니다.
@@ -82,7 +100,7 @@ node --test tests/auto_turn.test.mjs
 3. [Last.fm API 계정](https://www.last.fm/api/account/create)을 만들어 API key를 발급받고,
    `config.js`의 `YOUR_LASTFM_API_KEY`를 발급받은 키로 바꿉니다.
    (Shared secret은 필요 없습니다. 올리지 마세요.)
-4. `home.html`을 브라우저로 엽니다. (VS Code의 Live Server 확장 사용을 권장)
+4. `digging.html`을 브라우저로 엽니다. (VS Code의 Live Server 확장 사용을 권장)
 
 `config.js`는 `.gitignore`에 등록되어 있어서 GitHub에 올라가지 않습니다.
 
@@ -96,7 +114,7 @@ node --test tests/auto_turn.test.mjs
 
 ## TODO
 
-- 유튜브 API 검색/재생 연동 (`home.js`의 `playSong`)
+- 유튜브 API 검색/재생 연동 (`digging.js`의 `playSong`)
 - 백엔드 연동: API 키를 서버로 이동, 플레이리스트를 DB에 저장
 
 ## Ambient 통합 화면
@@ -105,13 +123,37 @@ node --test tests/auto_turn.test.mjs
 시작 화면의 `악보 업로드 · 연습` 카드에서 기존 PDF 연습 기능을 이용할 수 있고,
 Aurora와 악보 화면의 상단 메뉴로 두 화면을 오갈 수 있습니다.
 
-- Ambient 플레이어: `ambient/aurora/index.html`
+- Ambient 로그인: `pages/ambient_login.html`
+- Ambient 시작 화면: `pages/ambient_hub.html`
+- Ambient 플레이어: `pages/aurora.html`
 - 악보 연습: `pages/sheet_uploading.html`
-- 기존 음악 추천: `pages/home.html`
+- 기존 음악 추천: `pages/digging.html`
 - 기존 커뮤니티: `pages/community.html`
 
 Aurora의 재생 JavaScript와 기존 CSS, PDF 연습 모듈과 기존 `upload.css`는 그대로 유지합니다.
-악보 화면에는 별도 `ambient/assets/practice.css`로 Ambient 스타일을 적용합니다.
+악보 화면에는 별도 `pages/web_programming/css/ambient_practice.css`로 Ambient 스타일을 적용합니다.
 Ambient 로그인은 기존 브라우저 데모 방식이며, Spotify·YouTube 연결은 기존 계정/API 설정을 사용합니다.
-Spotify 앱의 Redirect URI는 실제로 접속하는 `ambient/aurora/` 주소와 일치해야 합니다.
+Spotify 앱의 Redirect URI는 실제로 접속하는 `pages/aurora.html` 주소와 일치해야 합니다.
+기존 `ambient/aurora/` 주소를 등록했다면 새 주소로 변경해야 합니다.
 악보와 플레이리스트는 사이트 주소별 브라우저 저장소를 사용하므로 다른 배포 주소의 자료가 자동 이전되지는 않습니다.
+
+### 파일 분류
+
+Ambient 파일은 기존 `pages` 구조에 맞춰 종류별로 정리했습니다.
+
+- HTML: `pages/` (`index.html`은 Ambient 로그인으로 이동)
+- CSS: `pages/web_programming/css/` (`ambient_*.css`, `aurora.css`)
+- JavaScript: `pages/scripts/` (`ambient_session.js`, `aurora.js`)
+- 이미지: `pages/imgs/aurora.jpg`
+
+현재 로그인 진입점은 `pages/ambient_login.html`이며, 음악 디깅과 커뮤니티도 Ambient 로그인 상태를 읽습니다.
+
+### 공통 디자인과 메뉴
+
+음악 디깅, 커뮤니티(피드·글쓰기·프로필), 시작 화면, Aurora, 악보 연습의 상단 메뉴에서
+`시작 · 음악 디깅 · 커뮤니티 · Aurora · 악보 연습`으로 이동할 수 있습니다.
+음악 디깅 메뉴는 `pages/digging.html`로 연결됩니다.
+
+`ambient_theme.css`의 공통 색상·배경과 `ambient_navigation.css`의 상단 메뉴를 함께 사용합니다.
+음악 디깅의 카드·검색창은 `digging.css`, 커뮤니티의 게시글·작성 폼·프로필은 `community_.css`에서 관리합니다.
+로그인과 시작 화면의 전용 스타일은 각각 `ambient_login.css`, `ambient_hub.css`에서 관리합니다.

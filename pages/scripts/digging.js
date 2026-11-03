@@ -1,5 +1,5 @@
 // ============================================================
-// home.js - 노래 검색 / 플레이리스트 / 장르 기반 디깅 추천
+// digging.js - 노래 검색 / 플레이리스트 / 장르 기반 디깅 추천
 //   검색·유사곡·장르 추천 : Last.fm API
 //   장르 보완(태그가 없을 때) : MusicBrainz API
 // ============================================================
@@ -70,12 +70,16 @@ const playlistBox = document.querySelector(".playlist");
 const sections = document.querySelectorAll(".recommendation_section");
 const similarList = sections[0].querySelector("div");
 const differentList = sections[1].querySelector("div");
-const header = document.querySelector("header");
+const searchArea = document.querySelector(".discovery-search");
 
 const searchResults = document.createElement("div");
 searchResults.className = "search_results box";
+searchResults.id = "searchResults";
+searchResults.setAttribute("aria-live", "polite");
 searchResults.hidden = true;
-header.appendChild(searchResults);
+searchArea.appendChild(searchResults);
+
+MD.renderUserArea(document.getElementById("userArea"));
 
 const playlistBody = document.createElement("div");
 playlistBody.className = "playlist_body";
@@ -646,7 +650,7 @@ searchInput.addEventListener("keydown", event => {
 
 // 검색 영역 바깥을 클릭하면 닫기 (+ 클릭으로 요소가 바뀌어도 동작하도록 composedPath 사용)
 document.addEventListener("click", event => {
-    if (!event.composedPath().includes(header)) searchResults.hidden = true;
+    if (!event.composedPath().includes(searchArea)) searchResults.hidden = true;
 });
 
 searchInput.addEventListener("focus", () => {

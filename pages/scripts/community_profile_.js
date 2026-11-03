@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const isMe = target === me;
   let currentTab = 'posts'; // 'posts' | 'likes' | 'following'
 
-  document.title = target + ' 프로필 - MusicDig';
+  document.title = target + ' 프로필 - Ambient';
   avatarEl.textContent = target.charAt(0);
   nameEl.textContent = target;
   meBadge.classList.toggle('hidden', !isMe);

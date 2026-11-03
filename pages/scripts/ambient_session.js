@@ -16,7 +16,7 @@
     },
     clear: function () { try { localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); } catch (e) {} },
     require: function (loginUrl) {
-      if (!read()) { location.replace(loginUrl || '../'); return false; }
+      if (!read()) { location.replace(loginUrl || 'ambient_login.html'); return false; }
       return true;
     }
   };

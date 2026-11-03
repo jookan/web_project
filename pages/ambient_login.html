@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ambient · 로그인</title>
+<meta name="description" content="듣고, 연습하고, 함께 나누는 음악. 음악 커뮤니티, 악보 업로드·연습, 커버 반응형 스트리밍을 한곳에서.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23111'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23333' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23ff8a5c'/%3E%3Ccircle cx='32' cy='32' r='2.5' fill='%23111'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="web_programming/css/ambient_theme.css?v=1">
+<link rel="stylesheet" href="web_programming/css/ambient_login.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<main class="stage">
+  <div class="shell" id="shell">
+    <aside class="showcase" aria-hidden="true">
+      <div class="brand"><span class="brand-mark"></span>Ambient</div>
+      <div class="vinyl-wrap">
+        <i class="ring"></i><i class="ring r2"></i>
+        <div class="vinyl"><div class="label"></div></div>
+        <i class="shine"></i>
+        <span class="pill"><span class="eq"><i></i><i></i><i></i><i></i></span>Now spinning</span>
+      </div>
+      <h1>듣고, 연습하고,<br><span>함께 나누는</span> 음악</h1>
+      <ul class="feats">
+        <li><span class="ic"><svg viewBox="0 0 24 24"><path d="M17 8.5a5 5 0 1 0-9.9 1A4 4 0 0 0 7 17h9a4 4 0 0 0 1-8.5z"/><path d="M9 20l1-3M14 20l1-3"/></svg></span>음악 커뮤니티에서 취향을 나눠요</li>
+        <li><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></span>악보를 올리고 연습해요</li>
+        <li><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 12h3l2-6 4 12 3-9 2 3h4"/></svg></span>앨범 색으로 물드는 스트리밍</li>
+      </ul>
+    </aside>
+
+    <section class="panel" id="panel">
+      <div class="brand mobile-brand"><span class="brand-mark"></span>Ambient</div>
+
+      <div class="tabs" role="tablist" aria-label="로그인 방식">
+        <i class="tab-ind" aria-hidden="true"></i>
+        <button type="button" role="tab" id="tabLogin" aria-selected="true" data-mode="login">로그인</button>
+        <button type="button" role="tab" id="tabSignup" aria-selected="false" data-mode="signup">회원가입</button>
+      </div>
+
+      <div class="head">
+        <h2 id="title">다시 만나서 반가워요</h2>
+        <p id="sub">로그인하고 음악 커뮤니티, 악보 연습, 스트리밍으로 들어가 보세요.</p>
+      </div>
+
+      <form id="form" novalidate autocomplete="on">
+        <div class="field" id="fName" hidden>
+          <label for="name">이름</label>
+          <div class="input">
+            <svg class="lead" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <input id="name" name="name" type="text" placeholder="표시될 이름" autocomplete="nickname" maxlength="20">
+          </div>
+          <div class="err" aria-live="polite"></div>
+        </div>
+
+        <div class="field" id="fEmail">
+          <label for="email">이메일</label>
+          <div class="input">
+            <svg class="lead" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 8 8 6 8-6"/></svg>
+            <input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
+          </div>
+          <div class="err" aria-live="polite"></div>
+        </div>
+
+        <div class="field" id="fPw">
+          <label for="pw">비밀번호</label>
+          <div class="input">
+            <svg class="lead" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input id="pw" name="password" type="password" placeholder="6자 이상" autocomplete="current-password">
+            <button type="button" class="eye" id="eye" aria-label="비밀번호 보기" aria-pressed="false">
+              <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="err" aria-live="polite"></div>
+        </div>
+
+        <div class="field" id="fPw2" hidden>
+          <label for="pw2">비밀번호 확인</label>
+          <div class="input">
+            <svg class="lead" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+            <input id="pw2" type="password" placeholder="한 번 더 입력" autocomplete="new-password">
+          </div>
+          <div class="err" aria-live="polite"></div>
+        </div>
+
+        <div class="row">
+          <label class="check"><input type="checkbox" id="remember" checked><span class="box"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>로그인 유지</label>
+          <a href="#" id="forgot">비밀번호를 잊으셨나요?</a>
+        </div>
+
+        <button class="btn btn-primary" id="submit" type="submit"><span id="submitText">로그인</span></button>
+        <div class="or">또는</div>
+        <button class="btn btn-ghost" id="guest" type="button">게스트로 둘러보기</button>
+      </form>
+
+      <p class="note">데모 로그인이에요. 별도의 계정 서버가 없어서 입력한 비밀번호는 저장하거나 전송하지 않고, 표시할 이름만 이 브라우저에 기억해요.</p>
+    </section>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="scripts/ambient_session.js?v=1"></script>
+<script src="scripts/ambient_login.js"></script>
+</body>
+</html>

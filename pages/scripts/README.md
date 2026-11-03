@@ -1,5 +1,19 @@
 # 악보 페이지 JavaScript 구성
 
+## 로그인·시작 화면 공통 파일
+
+| 파일 | 역할 |
+| --- | --- |
+| `ambient_session.js` | Firebase 연결 전의 브라우저 데모 세션 읽기·저장·삭제 |
+| `session_guard.js` | 시작 화면과 Aurora의 데모 세션 검사. `ambient_session.js` 다음에 실행 |
+| `ambient_login.js` | 로그인·회원가입 탭, 입력값 검사, 비밀번호 표시, 게스트 입장 |
+| `ambient_hub.js` | 시작 화면의 사용자 이름 표시와 로그아웃 |
+
+로그인과 시작 화면의 HTML에는 스크립트 경로만 두고 실행 코드는 위 파일에서 관리합니다.
+`session_guard.js`는 기존 데모 동작을 보존한 코드이며 실제 서버 인증이나 Firebase 권한 검사를 대신하지 않습니다.
+
+## 악보 기능
+
 HTML은 `sheet_functions.js` 하나를 `type="module"`로 불러온다.
 나머지 파일은 이 파일의 `import`를 따라 연결된다.
 

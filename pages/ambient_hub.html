@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ambient · 시작하기</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23111'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23333' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23ff8a5c'/%3E%3Ccircle cx='32' cy='32' r='2.5' fill='%23111'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="web_programming/css/ambient_theme.css?v=1">
+<script src="scripts/ambient_session.js?v=1"></script>
+<script src="scripts/session_guard.js"></script>
+<link rel="stylesheet" href="web_programming/css/ambient_hub.css">
+<link rel="stylesheet" href="web_programming/css/ambient_navigation.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<header class="site-header">
+  <a class="brand" href="ambient_hub.html"><span class="brand-mark" aria-hidden="true"></span>Ambient</a>
+    <nav class="primary-nav" aria-label="사이트 메뉴">
+      <a href="ambient_hub.html" aria-current="page">시작</a>
+      <a href="digging.html">음악 디깅</a>
+      <a href="community.html">커뮤니티</a>
+      <a href="aurora.html">Aurora</a>
+      <a href="sheet_uploading.html">악보 연습</a>
+    </nav>
+  <div class="me">
+    <span class="avatar" id="avatar">?</span>
+    <b id="uname">회원</b><span class="guest" id="guestTag" hidden>게스트</span>
+    <button class="logout" id="logout" type="button">로그아웃</button>
+  </div>
+</header>
+
+<main class="stage">
+  <div class="hello">
+    <small>WELCOME</small>
+    <h1>안녕하세요, <span id="hname">회원</span>님</h1>
+    <p>오늘은 무엇을 해볼까요?</p>
+  </div>
+
+  <div class="cards">
+    <a class="card live" style="--i:0" href="community.html">
+      <div class="preview">
+        <div class="comm" aria-hidden="true">
+          <div class="chips"><span class="on">추천</span><span>팔로잉</span><span>밴드</span><span>커버</span></div>
+          <div class="post"><span class="av" style="background:linear-gradient(135deg,#ffb17a,#ff6f91)">민</span>
+            <div><b>민지</b><em>방금 전</em><p>새벽에 듣기 좋은 로파이 플레이리스트 공유해요. 취향 나눠 주세요!</p>
+              <div class="react"><span class="heart"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 5 6 5c2 0 3.4 1.1 4 2.4h4C14.6 6.1 16 5 18 5c3.3 0 5.100 3.400 3.600 6.800C19.500 16.400 12 21 12 21z"/></svg>128</span><span><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.600 7.100L3 20l1-4.800A8 8 0 1 1 21 12z"/></svg>24</span></div></div></div>
+          <div class="post"><span class="av" style="background:linear-gradient(135deg,#8f7bff,#5fd0ff)">준</span>
+            <div><b>준호</b><em>12분 전</em><p>이번 주 커버 영상 올렸어요. 피드백 환영합니다.</p>
+              <div class="tagline"><i>#커버</i><i>#어쿠스틱</i></div></div></div>
+          <span class="live-pill"><span class="eq"><i></i><i></i><i></i></span>12명이 듣는 중</span>
+        </div>
+      </div>
+      <div class="body">
+        <span class="badge on"><i></i>이용 가능</span>
+        <h2>음악 커뮤니티</h2>
+        <p>좋아하는 곡과 플레이리스트를 공유하고, 커버 영상에 피드백을 나누는 공간이에요.</p>
+        <span class="cta">이야기 나누기</span>
+      </div>
+    </a>
+
+    <a class="card live" style="--i:1" href="sheet_uploading.html">
+      <div class="preview">
+        <div class="sheet" aria-hidden="true">
+          <div class="paper">
+            <svg viewBox="0 0 300 185" preserveAspectRatio="xMidYMid meet">
+              <g stroke="#3a3128" stroke-width="1.1" opacity=".75">
+                <path d="M22 40h268M22 50h268M22 60h268M22 70h268M22 80h268"/>
+                <path d="M22 40v40M290 40v40M112 40v40M200 40v40" stroke-width="1.4"/>
+              </g>
+              <text x="27" y="66" font-family="Georgia, serif" font-weight="700" font-size="17" fill="#3a3128">4</text>
+              <text x="27" y="82" font-family="Georgia, serif" font-weight="700" font-size="17" fill="#3a3128">4</text>
+              <g fill="#2a231b">
+                <g transform="rotate(-18 60 70)"><ellipse cx="60" cy="70" rx="6.4" ry="4.6"/></g><path d="M65.700 68V38" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 82 65)"><ellipse cx="82" cy="65" rx="6.4" ry="4.6"/></g><path d="M87.700 63V33" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 104 60)"><ellipse cx="104" cy="60" rx="6.4" ry="4.6"/></g><path d="M98.300 62v30" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 130 65)"><ellipse cx="130" cy="65" rx="6.4" ry="4.6"/></g><path d="M135.700 63V33" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 152 70)"><ellipse cx="152" cy="70" rx="6.4" ry="4.6"/></g><path d="M135.700 63V33" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 174 55)"><ellipse cx="174" cy="55" rx="6.4" ry="4.6"/></g><path d="M168.300 57v30" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 222 60)"><ellipse cx="222" cy="60" rx="6.4" ry="4.6"/></g><path d="M216.300 62v30" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 246 75)"><ellipse cx="246" cy="75" rx="6.4" ry="4.6"/></g><path d="M251.700 73V43" stroke="#2a231b" stroke-width="1.6"/>
+                <g transform="rotate(-18 268 65)"><ellipse cx="268" cy="65" rx="6.4" ry="4.6"/></g><path d="M273.700 63V33" stroke="#2a231b" stroke-width="1.6"/>
+                <path d="M65.700 38 87.700 33v5L65.700 43z"/><path d="M135.700 33l22 5v5l-22-5z"/>
+              </g>
+            </svg>
+            <i class="playhead"></i>
+            <div class="drop"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 20h16"/></svg>PDF 악보 올리기</div>
+          </div>
+          <div class="tools"><span class="on">BPM 설정</span><span>자동 넘기기</span><span>메트로놈</span></div>
+        </div>
+      </div>
+      <div class="body">
+        <span class="badge on"><i></i>이용 가능</span>
+        <h2>악보 업로드 · 연습</h2>
+        <p>PDF 악보를 올리고, BPM과 연주 순서에 맞춰 페이지를 넘기며 메트로놈과 함께 연습해요.</p>
+        <span class="cta">연습하기</span>
+      </div>
+    </a>
+
+    <a class="card live" style="--i:2" href="aurora.html">
+      <div class="preview"><div class="shot" style="background-image:url(imgs/aurora.jpg)" role="img" aria-label="Aurora 화면"></div></div>
+      <div class="body">
+        <span class="badge on"><i></i>이용 가능</span>
+        <h2>Aurora 스트리밍</h2>
+        <p>앨범 커버의 색으로 물드는 배경과 곡의 분위기에 반응하는 화면으로 음악을 들어요.</p>
+        <span class="cta">열기</span>
+      </div>
+    </a>
+  </div>
+</main>
+
+
+<script src="scripts/ambient_hub.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>프로필 - MusicDig</title>
+<link rel="stylesheet" href="web_programming/css/community_.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="home.html">홈</a>
+      <a href="community.html">커뮤니티</a>
+      <span id="userArea"></span>
+    </nav>
+  </header>
+
+  <hr/>
+
+  <section>
+    <p><a class="back-link" href="community.html">← 커뮤니티로 돌아가기</a></p>
+
+    <div class="profile-head">
+      <div class="avatar big" id="profileAvatar"></div>
+      <div class="profile-info">
+        <h2><span id="profileName"></span> <span class="me-badge hidden" id="meBadge">나</span></h2>
+        <div class="profile-stats">
+          <span>작성한 글 <strong id="statPosts">0</strong></span>
+          <span>좋아요한 글 <strong id="statLikes">0</strong></span>
+          <span>팔로잉 <strong id="statFollowing">0</strong></span>
+          <span>팔로워 <strong id="statFollowers">0</strong></span>
+        </div>
+      </div>
+      <div id="followSlot"></div>
+    </div>
+
+    <nav class="tabs profile-tabs">
+      <a href="#" class="active" data-tab="posts">작성한 글</a>
+      <a href="#" data-tab="likes">좋아요한 글</a>
+      <a href="#" data-tab="following">팔로잉</a>
+    </nav>
+
+    <div id="profileList"></div>
+    <p class="empty-msg" id="emptyMsg"></p>
+  </section>
+
+
+  <script src="scripts/community_common_.js"></script>
+  <script src="scripts/community_profile_.js"></script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ambient · 로그인</title>
+<meta name="description" content="듣고, 연습하고, 함께 나누는 음악. 음악 커뮤니티, 악보 업로드·연습, 커버 반응형 스트리밍을 한곳에서.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23111'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23333' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23ff8a5c'/%3E%3Ccircle cx='32' cy='32' r='2.5' fill='%23111'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/theme.css?v=1">
+<style>
+  .stage { position: relative; z-index: 1; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 32px 20px; }
+  .shell { display: grid; grid-template-columns: 1.05fr 1fr; width: min(1040px, 100%); min-height: 620px; border-radius: 32px; overflow: hidden;
+    background: var(--glass); backdrop-filter: blur(34px) saturate(1.5); border: 1px solid var(--stroke);
+    box-shadow: 0 50px 120px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08);
+    animation: enter .9s var(--ease) both; transition: opacity .45s ease, transform .6s var(--ease), filter .45s; }
+  .shell.leaving { opacity: 0; transform: scale(.97) translateY(10px); filter: blur(6px); }
+  @keyframes enter { from { opacity: 0; transform: translateY(24px) scale(.98); } }
+
+  /* ---------- 왼쪽: 소개 ---------- */
+  .showcase { position: relative; padding: 36px 40px; display: flex; flex-direction: column; overflow: hidden;
+    background: linear-gradient(160deg, rgba(255,138,92,.16), rgba(143,123,255,.14) 60%, rgba(40,170,210,.1)); border-right: 1px solid var(--stroke); }
+  .vinyl-wrap { position: relative; flex: 1; display: grid; place-items: center; min-height: 250px; margin: 12px 0 8px; }
+  .vinyl { position: relative; width: min(290px, 64%); aspect-ratio: 1; border-radius: 50%; animation: spin 14s linear infinite;
+    background:
+      conic-gradient(from 0deg, rgba(255,255,255,0) 0 8%, rgba(255,255,255,.07) 12%, rgba(255,255,255,0) 17% 40%, rgba(255,255,255,.05) 45%, rgba(255,255,255,0) 50% 72%, rgba(255,255,255,.07) 78%, rgba(255,255,255,0) 84%),
+      radial-gradient(circle, #1c1c22 0 30%, #09090b 31% 100%);
+    box-shadow: 0 0 0 6px #101013, 0 30px 80px rgba(0,0,0,.6), 0 0 100px rgba(255,138,92,.28); }
+  .vinyl::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+    background: repeating-radial-gradient(circle, rgba(255,255,255,.03) 0 1px, rgba(0,0,0,.2) 1px 2.5px, transparent 2.5px 3.6px);
+    -webkit-mask: radial-gradient(circle, transparent 0 33%, #000 34%); mask: radial-gradient(circle, transparent 0 33%, #000 34%); }
+  .vinyl .label { position: absolute; inset: 33%; border-radius: 50%; background: conic-gradient(from 200deg, var(--accent), var(--pink), var(--accent2), var(--accent));
+    box-shadow: 0 0 0 3px rgba(0,0,0,.55), inset 0 0 20px rgba(0,0,0,.25); display: grid; place-items: center; }
+  .vinyl .label::after { content: ""; width: 14%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b5b5bd 55%, #5a5a62); box-shadow: 0 1px 4px rgba(0,0,0,.7); }
+  .shine { position: absolute; width: min(290px, 64%); aspect-ratio: 1; border-radius: 50%; pointer-events: none; mix-blend-mode: screen;
+    background: conic-gradient(from 25deg, transparent 0 4%, rgba(255,255,255,.22) 9%, transparent 16% 46%, rgba(255,255,255,.14) 56%, transparent 66%);
+    -webkit-mask: radial-gradient(circle, transparent 0 33%, #000 34%); mask: radial-gradient(circle, transparent 0 33%, #000 34%); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ring { position: absolute; width: min(290px, 64%); aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(255,138,92,.5); animation: ping 3.2s cubic-bezier(.2,.7,.3,1) infinite; pointer-events: none; }
+  .ring.r2 { animation-delay: 1.6s; }
+  @keyframes ping { from { transform: scale(1); opacity: .5; } to { transform: scale(1.5); opacity: 0; } }
+  .pill { position: absolute; left: 4%; bottom: 4%; display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 600;
+    background: rgba(12,12,18,.6); border: 1px solid var(--stroke-2); backdrop-filter: blur(14px); color: var(--fg2); }
+  .eq { display: inline-flex; align-items: flex-end; gap: 2.5px; height: 14px; }
+  .eq i { width: 3px; height: 100%; border-radius: 2px; background: var(--accent); transform-origin: bottom; animation: eq .9s ease-in-out infinite; }
+  .eq i:nth-child(2) { animation-delay: -.3s; background: var(--pink); } .eq i:nth-child(3) { animation-delay: -.6s; background: var(--accent2); } .eq i:nth-child(4) { animation-delay: -.15s; }
+  @keyframes eq { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+  .showcase h1 { margin: 0; font-size: clamp(28px, 3.4vw, 38px); line-height: 1.15; letter-spacing: -.04em; font-weight: 800; }
+  .showcase h1 span { background: linear-gradient(90deg, #ffb17a, var(--pink) 50%, var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .feats { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 12px; }
+  .feats li { display: flex; align-items: center; gap: 12px; font-size: 14.5px; color: var(--fg2); }
+  .feats .ic { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; flex: none; background: rgba(255,255,255,.08); border: 1px solid var(--stroke); }
+  .feats .ic svg { width: 17px; height: 17px; }
+
+  /* ---------- 오른쪽: 폼 ---------- */
+  .panel { padding: 44px 48px; display: flex; flex-direction: column; justify-content: center; }
+  .panel.shake { animation: shake .45s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+  .tabs { --t: 0; position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid var(--stroke); margin-bottom: 26px; }
+  .tabs button { position: relative; z-index: 1; border: 0; background: none; height: 40px; border-radius: 10px; font-weight: 700; font-size: 14px; color: var(--fg3); transition: color .25s; }
+  .tabs button[aria-selected="true"] { color: #15151a; }
+  .tab-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 10px; background: rgba(255,255,255,.95); box-shadow: 0 4px 16px rgba(0,0,0,.35);
+    transform: translateX(calc(var(--t) * 100%)); transition: transform .5s var(--spring); }
+  .head h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.03em; }
+  .head p { margin: 0 0 22px; color: var(--fg2); font-size: 14.5px; line-height: 1.6; }
+  form { display: grid; gap: 15px; }
+  .field { display: grid; gap: 7px; }
+  .field[hidden] { display: none; }
+  .field label { font-size: 13px; font-weight: 600; color: var(--fg2); }
+  .input { position: relative; }
+  .input > svg.lead { position: absolute; left: 15px; top: 50%; width: 18px; height: 18px; margin-top: -9px; color: var(--fg3); pointer-events: none; transition: color .2s; }
+  .input input { width: 100%; height: 50px; padding: 0 46px 0 46px; border-radius: 14px; border: 1px solid var(--stroke-2); background: rgba(255,255,255,.05); outline: none; font-size: 15px;
+    transition: border-color .2s, background .2s, box-shadow .25s; }
+  .input input::placeholder { color: var(--fg3); }
+  .input input:focus { border-color: rgba(255,177,122,.85); background: rgba(255,255,255,.08); box-shadow: 0 0 0 4px rgba(255,138,92,.2); }
+  .input:focus-within > svg.lead { color: var(--accent); }
+  .field.invalid input { border-color: rgba(255,107,129,.9); box-shadow: 0 0 0 4px rgba(255,107,129,.16); }
+  .eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border: 0; background: none; border-radius: 10px; color: var(--fg3); display: grid; place-items: center; }
+  .eye:hover { color: var(--fg); background: rgba(255,255,255,.08); } .eye svg { width: 19px; height: 19px; }
+  .err { min-height: 0; font-size: 12.5px; color: #ff8fa3; display: none; } .field.invalid .err { display: block; animation: rise .3s var(--ease); }
+  @keyframes rise { from { opacity: 0; transform: translateY(-4px); } }
+  .row { display: flex; align-items: center; justify-content: space-between; font-size: 13.5px; color: var(--fg2); margin: 2px 0 4px; }
+  .check { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+  .check input { position: absolute; opacity: 0; }
+  .check .box { width: 19px; height: 19px; border-radius: 6px; border: 1.5px solid var(--stroke-2); background: rgba(255,255,255,.05); display: grid; place-items: center; transition: background .2s, border-color .2s; }
+  .check .box svg { width: 13px; height: 13px; stroke: #15151a; stroke-width: 3; opacity: 0; transform: scale(.5); transition: opacity .2s, transform .3s var(--spring); }
+  .check input:checked + .box { background: linear-gradient(135deg, #ffb17a, var(--pink)); border-color: transparent; } .check input:checked + .box svg { opacity: 1; transform: none; }
+  .check input:focus-visible + .box { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .row a { color: var(--fg3); text-decoration: none; } .row a:hover { color: var(--fg); }
+  .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(21,21,26,.25); border-top-color: #15151a; animation: spin .7s linear infinite; }
+  .or { display: flex; align-items: center; gap: 14px; margin: 4px 0; color: var(--fg3); font-size: 12.5px; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--stroke); }
+  .note { margin: 16px 0 0; font-size: 12.5px; line-height: 1.7; color: var(--fg3); }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; min-height: 0; }
+    .showcase { display: none; }
+    .panel { padding: 30px 24px 32px; }
+    .mobile-brand { display: flex !important; }
+  }
+  .mobile-brand { display: none; margin-bottom: 22px; }
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<main class="stage">
+  <div class="shell" id="shell">
+    <aside class="showcase" aria-hidden="true">
+      <div class="brand"><span class="brand-mark"></span>Ambient</div>
+      <div class="vinyl-wrap">
+        <i class="ring"></i><i class="ring r2"></i>
+        <div class="vinyl"><div class="label"></div></div>
+        <i class="shine"></i>
+        <span class="pill"><span class="eq"><i></i><i></i><i></i><i></i></span>Now spinning</span>
+      </div>
+      <h1>듣고, 연습하고,<br><span>함께 나누는</span> 음악</h1>
+      <ul class="feats">
+        <li><span class="ic"><svg viewBox="0 0 24 24"><path d="M17 8.5a5 5 0 1 0-9.9 1A4 4 0 0 0 7 17h9a4 4 0 0 0 1-8.5z"/><path d="M9 20l1-3M14 20l1-3"/></svg></span>음악 커뮤니티에서 취향을 나눠요</li>
+        <li><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></span>악보를 올리고 연습해요</li>
+        <li><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 12h3l2-6 4 12 3-9 2 3h4"/></svg></span>앨범 색으로 물드는 스트리밍</li>
+      </ul>
+    </aside>
+
+    <section class="panel" id="panel">
+      <div class="brand mobile-brand"><span class="brand-mark"></span>Ambient</div>
+
+      <div class="tabs" role="tablist" aria-label="로그인 방식">
+        <i class="tab-ind" aria-hidden="true"></i>
+        <button type="button" role="tab" id="tabLogin" aria-selected="true" data-mode="login">로그인</button>
+        <button type="button" role="tab" id="tabSignup" aria-selected="false" data-mode="signup">회원가입</button>
+      </div>
+
+      <div class="head">
+        <h2 id="title">다시 만나서 반가워요</h2>
+        <p id="sub">로그인하고 음악 커뮤니티, 악보 연습, 스트리밍으로 들어가 보세요.</p>
+      </div>
+
+      <form id="form" novalidate autocomplete="on">
+        <div class="field" id="fName" hidden>
+          <label for="name">이름</label>
+          <div class="input">
+            <svg class="lead" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <input id="name" name="name" type="text" placeholder="표시될 이름" autocomplete="nickname" maxlength="20">
+          </div>
+          <div class="err" aria-live="polite"></div>
+        </div>
+
+        <div class="field" id="fEmail">
+          <label for="email">이메일</label>
+          <div class="input">
+            <svg class="lead" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 8 8 6 8-6"/></svg>
+            <input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
+          </div>
+          <div class="err" aria-live="polite"></div>
+        </div>
+
+        <div class="field" id="fPw">
+          <label for="pw">비밀번호</label>
+          <div class="input">
+            <svg class="lead" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input id="pw" name="password" type="password" placeholder="6자 이상" autocomplete="current-password">
+            <button type="button" class="eye" id="eye" aria-label="비밀번호 보기" aria-pressed="false">
+              <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="err" aria-live="polite"></div>
+        </div>
+
+        <div class="field" id="fPw2" hidden>
+          <label for="pw2">비밀번호 확인</label>
+          <div class="input">
+            <svg class="lead" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+            <input id="pw2" type="password" placeholder="한 번 더 입력" autocomplete="new-password">
+          </div>
+          <div class="err" aria-live="polite"></div>
+        </div>
+
+        <div class="row">
+          <label class="check"><input type="checkbox" id="remember" checked><span class="box"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>로그인 유지</label>
+          <a href="#" id="forgot" onclick="return false">비밀번호를 잊으셨나요?</a>
+        </div>
+
+        <button class="btn btn-primary" id="submit" type="submit"><span id="submitText">로그인</span></button>
+        <div class="or">또는</div>
+        <button class="btn btn-ghost" id="guest" type="button">게스트로 둘러보기</button>
+      </form>
+
+      <p class="note">데모 로그인이에요. 별도의 계정 서버가 없어서 입력한 비밀번호는 저장하거나 전송하지 않고, 표시할 이름만 이 브라우저에 기억해요.</p>
+    </section>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/session.js?v=1"></script>
+<script>
+  if (Session.get()) location.replace('hub/');
+
+  var $ = function (id) { return document.getElementById(id); };
+  var mode = 'login', busy = false;
+  var tabs = document.querySelector('.tabs');
+  var COPY = {
+    login:  { title: '다시 만나서 반가워요', sub: '로그인하고 음악 커뮤니티, 악보 연습, 스트리밍으로 들어가 보세요.', btn: '로그인' },
+    signup: { title: '함께 시작해요', sub: '이름과 이메일만 있으면 바로 시작할 수 있어요.', btn: '회원가입' }
+  };
+
+  function setMode(m) {
+    mode = m;
+    tabs.style.setProperty('--t', m === 'signup' ? 1 : 0);
+    $('tabLogin').setAttribute('aria-selected', m === 'login');
+    $('tabSignup').setAttribute('aria-selected', m === 'signup');
+    $('title').textContent = COPY[m].title; $('sub').textContent = COPY[m].sub; $('submitText').textContent = COPY[m].btn;
+    $('fName').hidden = m !== 'signup'; $('fPw2').hidden = m !== 'signup';
+    $('pw').autocomplete = m === 'signup' ? 'new-password' : 'current-password';
+    $('forgot').style.visibility = m === 'login' ? 'visible' : 'hidden';
+    clearErrors();
+  }
+  $('tabLogin').onclick = function () { setMode('login'); };
+  $('tabSignup').onclick = function () { setMode('signup'); };
+
+  function clearErrors() { document.querySelectorAll('.field').forEach(function (f) { f.classList.remove('invalid'); }); }
+  function fail(fieldId, msg) { var f = $(fieldId); f.classList.add('invalid'); f.querySelector('.err').textContent = msg; return f; }
+  ['name', 'email', 'pw', 'pw2'].forEach(function (id) { $(id).addEventListener('input', function () { this.closest('.field').classList.remove('invalid'); }); });
+
+  $('eye').onclick = function () {
+    var show = $('pw').type === 'password';
+    $('pw').type = show ? 'text' : 'password';
+    this.setAttribute('aria-pressed', show); this.setAttribute('aria-label', show ? '비밀번호 숨기기' : '비밀번호 보기');
+  };
+  $('forgot').addEventListener('click', function () { toast('데모 버전이라 비밀번호 찾기는 아직 없어요.'); });
+
+  var toastTimer;
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3200); }
+
+  function enter(user) {
+    busy = true; $('submit').disabled = true; $('guest').disabled = true;
+    $('submitText').outerHTML = '<span class="spinner" id="spin"></span>';
+    Session.set(user, $('remember').checked && !user.guest);
+    setTimeout(function () { $('shell').classList.add('leaving'); setTimeout(function () { location.href = 'hub/'; }, 420); }, 550);
+  }
+
+  $('form').addEventListener('submit', function (e) {
+    e.preventDefault(); if (busy) return; clearErrors();
+    var name = $('name').value.trim(), email = $('email').value.trim(), pw = $('pw').value, pw2 = $('pw2').value, first = null;
+    var bad = function (id, m) { var f = fail(id, m); first = first || f; };
+    if (mode === 'signup' && !name) bad('fName', '표시될 이름을 입력해 주세요.');
+    if (!email) bad('fEmail', '이메일을 입력해 주세요.');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) bad('fEmail', '이메일 형식이 올바르지 않아요.');
+    if (!pw) bad('fPw', '비밀번호를 입력해 주세요.');
+    else if (mode === 'signup' && pw.length < 6) bad('fPw', '비밀번호는 6자 이상이어야 해요.');
+    if (mode === 'signup' && pw && pw2 !== pw) bad('fPw2', '비밀번호가 서로 달라요.');
+    if (first) {
+      var p = $('panel'); p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake');
+      var inp = first.querySelector('input'); if (inp) inp.focus();
+      return;
+    }
+    enter({ name: mode === 'signup' ? name : email.split('@')[0], email: email });
+  });
+
+  $('guest').onclick = function () { if (!busy) enter({ name: '게스트', guest: true }); };
+  setMode('login');
+</script>
+</body>
+</html>

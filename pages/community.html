@@ -7,7 +7,6 @@
 </head>
 <body>
   <header>
-    <h1>🎵 MusicDig</h1>
     <nav>
       <a href="home.html">홈</a>
       <a href="community.html">커뮤니티</a>
@@ -25,75 +24,16 @@
       <a href="#" data-tab="free">자유</a>
     </nav>
 
-    <details class="write-box" id="writeBox">
-      <summary>✏️ 글쓰기</summary>
-      <form onsubmit="return false;">
-        <label for="category">카테고리 선택</label>
-        <select id="category" name="category">
-          <option value="song">곡 추천</option>
-          <option value="sheet">악보 공유</option>
-          <option value="free">자유</option>
-        </select>
-        <textarea id="postText" rows="3" placeholder="무슨 곡 이야기를 나눠볼까요?"></textarea>
-        <p class="write-hint" id="writeHint"></p>
-        <button type="button" id="submitPost">등록</button>
-      </form>
-    </details>
-
-    <div id="postList">
-      <article class="post-card" data-category="song">
-        <div class="post-header">
-          <div class="avatar">1</div>
-          <div>
-            <strong>사용자1</strong>
-            <div class="post-meta">방금 전 · <span class="post-tag">곡 추천</span></div>
-          </div>
-          <button type="button" class="follow-btn">팔로우</button>
-        </div>
-        <p class="post-content">요즘 계속 돌려 듣는 곡인데 추천드려요, 다들 어떤 곡 듣고 계세요?</p>
-        <p class="post-meta">
-          <button type="button" class="like-btn"><span class="like-count">128</span> ❤</button> · 💬 24
-        </p>
-      </article>
-
-      <article class="post-card" data-category="sheet">
-        <div class="post-header">
-          <div class="avatar">2</div>
-          <div>
-            <strong>사용자2</strong>
-            <div class="post-meta">12분 전 · <span class="post-tag">악보 공유</span></div>
-          </div>
-          <button type="button" class="follow-btn">팔로우</button>
-        </div>
-        <p class="post-content">연습하면서 만든 악보 공유합니다. 다들 참고해보세요!</p>
-        <p class="post-meta">
-          <button type="button" class="like-btn"><span class="like-count">52</span> ❤</button> · 💬 9
-        </p>
-      </article>
-
-      <article class="post-card" data-category="free">
-        <div class="post-header">
-          <div class="avatar">3</div>
-          <div>
-            <strong>사용자3</strong>
-            <div class="post-meta">1시간 전 · <span class="post-tag">자유</span></div>
-          </div>
-          <button type="button" class="follow-btn">팔로우</button>
-        </div>
-        <p class="post-content">오늘 노래방 3시간 있었는데 목 다 쉬었어요 ㅋㅋ 그래도 재밌었음</p>
-        <p class="post-meta">
-          <button type="button" class="like-btn"><span class="like-count">31</span> ❤</button> · 💬 5
-        </p>
-      </article>
-    </div>
+    <div id="postList"></div>
 
     <p class="empty-msg" id="emptyMsg"></p>
   </section>
 
-  <footer>
-    <small>&copy; 2026 MusicDig Team.</small>
-  </footer>
+  <!-- 하단 글쓰기 버튼: 누르면 글쓰기 전용 페이지로 이동 (팔로잉 탭에서는 숨김) -->
+  <a href="community_write.html" class="fab hidden" id="writeFab">✏️ 글쓰기</a>
 
+
+  <script src="scripts/community_common_.js"></script>
   <script src="scripts/community_.js"></script>
 </body>
 </html>

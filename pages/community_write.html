@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>글쓰기 - MusicDig</title>
+<link rel="stylesheet" href="web_programming/css/community_.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="home.html">홈</a>
+      <a href="community.html">커뮤니티</a>
+      <span id="userArea"></span>
+    </nav>
+  </header>
+
+  <hr/>
+
+  <section class="write-page">
+    <h2>글쓰기</h2>
+
+    <label for="category">카테고리 선택</label>
+    <select id="category" name="category">
+      <option value="song">곡 추천</option>
+      <option value="sheet">악보 공유</option>
+      <option value="free">자유</option>
+    </select>
+
+    <label for="postText">내용</label>
+    <textarea id="postText" rows="8" placeholder="무슨 곡 이야기를 나눠볼까요?"></textarea>
+
+    <label for="fileInput">파일 첨부 (최대 3개, 파일당 5MB 이하)</label>
+    <input type="file" id="fileInput" multiple>
+    <ul class="file-list" id="fileList"></ul>
+
+    <p class="write-hint" id="writeHint"></p>
+
+    <div class="write-actions">
+      <a class="btn-cancel" id="cancelBtn" href="community.html">취소</a>
+      <button type="button" id="submitPost">등록</button>
+    </div>
+  </section>
+
+
+  <script src="scripts/community_common_.js"></script>
+  <script src="scripts/community_write_.js"></script>
+</body>
+</html>

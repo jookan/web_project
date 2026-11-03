@@ -65,3 +65,53 @@ PDF 악보를 한 페이지씩 보면서 연주 순서와 속도를 설정하고
 ```sh
 node --test tests/auto_turn.test.mjs
 ```
+
+
+## 음악 디깅 플레이리스트 페이지
+
+플레이리스트에 담은 곡의 장르를 분석해서 **비슷한 장르 / 다른 장르**의 곡을 추천하는 페이지입니다.
+장르 정보는 Last.fm과 MusicBrainz API에서 가져옵니다.
+
+## 실행 방법
+
+1. 이 저장소를 clone합니다.
+2. `pages/scripts/config.example.js`를 같은 폴더에 `config.js`로 복사합니다.
+   ```
+   cp pages/scripts/config.example.js pages/scripts/config.js
+   ```
+3. [Last.fm API 계정](https://www.last.fm/api/account/create)을 만들어 API key를 발급받고,
+   `config.js`의 `YOUR_LASTFM_API_KEY`를 발급받은 키로 바꿉니다.
+   (Shared secret은 필요 없습니다. 올리지 마세요.)
+4. `home.html`을 브라우저로 엽니다. (VS Code의 Live Server 확장 사용을 권장)
+
+`config.js`는 `.gitignore`에 등록되어 있어서 GitHub에 올라가지 않습니다.
+
+## 동작 방식
+
+- 검색: Last.fm `track.search`
+- 곡 장르: Last.fm 곡 태그 -> 가수 태그 -> MusicBrainz 순서로 조회
+- 비슷한 장르 추천: 플레이리스트 상위 장르의 인기곡 (`tag.getTopTracks`)
+- 다른 장르 추천: 플레이리스트와 겹치지 않는 장르 후보에서 선택
+- 플레이리스트는 브라우저 localStorage에 저장됩니다. (백엔드 연동 전 임시)
+
+## TODO
+
+- 유튜브 API 검색/재생 연동 (`home.js`의 `playSong`)
+- 백엔드 연동: API 키를 서버로 이동, 플레이리스트를 DB에 저장
+
+## Ambient 통합 화면
+
+로컬 웹 서버로 루트 `index.html`을 열면 Ambient 로그인/게스트 화면과 시작 화면으로 이동합니다.
+시작 화면의 `악보 업로드 · 연습` 카드에서 기존 PDF 연습 기능을 이용할 수 있고,
+Aurora와 악보 화면의 상단 메뉴로 두 화면을 오갈 수 있습니다.
+
+- Ambient 플레이어: `ambient/aurora/index.html`
+- 악보 연습: `pages/sheet_uploading.html`
+- 기존 음악 추천: `pages/home.html`
+- 기존 커뮤니티: `pages/community.html`
+
+Aurora의 재생 JavaScript와 기존 CSS, PDF 연습 모듈과 기존 `upload.css`는 그대로 유지합니다.
+악보 화면에는 별도 `ambient/assets/practice.css`로 Ambient 스타일을 적용합니다.
+Ambient 로그인은 기존 브라우저 데모 방식이며, Spotify·YouTube 연결은 기존 계정/API 설정을 사용합니다.
+Spotify 앱의 Redirect URI는 실제로 접속하는 `ambient/aurora/` 주소와 일치해야 합니다.
+악보와 플레이리스트는 사이트 주소별 브라우저 저장소를 사용하므로 다른 배포 주소의 자료가 자동 이전되지는 않습니다.

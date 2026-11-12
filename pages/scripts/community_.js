@@ -1,8 +1,10 @@
+import MD from "./community_common_.js";
+import { showDataError } from "./firebase_data.js";
+
 // 커뮤니티 메인(피드) 페이지
 // 공통 기능(글/팔로우/좋아요 저장, 카드 그리기)은 community_common_.js에
 
-document.addEventListener('DOMContentLoaded', function () {
-  const MD = window.MD;
+MD.ready.then(function () {
   const tabs = document.querySelectorAll('.tabs a');
   const postList = document.getElementById('postList');
   const emptyMsg = document.getElementById('emptyMsg');
@@ -17,17 +19,19 @@ document.addEventListener('DOMContentLoaded', function () {
   let currentTab = validTabs.indexOf(params.get('tab')) >= 0 ? params.get('tab') : 'following';
 
   function render() {
-    const me = MD.myName();
+    const me = MD.myId();
     const following = MD.getFollowing(me);
 
     let posts = MD.getPosts().slice().sort(function (a, b) { return b.ts - a.ts; });
     posts = posts.filter(function (p) {
-      return currentTab === 'following' ? following.indexOf(p.author) >= 0 : p.category === currentTab;
+      return currentTab === 'following' ? following.indexOf(p.authorUid) >= 0 : p.category === currentTab;
     });
 
     postList.replaceChildren();
     posts.forEach(function (p) {
-      postList.appendChild(MD.renderPostCard(p, render));
+      const card = MD.renderPostCard(p, render);
+      postList.appendChild(card);
+      if (card._focusFn) card._focusFn();
     });
 
     emptyMsg.classList.toggle('show', posts.length === 0);
@@ -58,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  MD.subscribe(render);
   setActiveTab();
   render();
-});
+}).catch(showDataError);

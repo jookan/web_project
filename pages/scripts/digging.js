@@ -1,3 +1,7 @@
+import { openAccountState, addImportButton } from "./account_state.js";
+import { initializeUserArea } from "./firebase_nav.js";
+import { showDataError } from "./firebase_data.js";
+
 // ============================================================
 // digging.js - 노래 검색 / 플레이리스트 / 장르 기반 디깅 추천
 //   검색·유사곡·장르 추천 : Last.fm API
@@ -50,6 +54,8 @@ const TAG_ALIASES = {
 // 2. 상태(state)
 // ------------------------------------------------------------
 // 플레이리스트: { id, title, artist, genres: [] } 객체 배열
+const playlistStore = await openAccountState("digging", PLAYLIST_KEY, () => []);
+if (playlistStore.loadError) showDataError(playlistStore.loadError);
 let playlist = loadPlaylist();
 let nowPlayingId = null;
 let playQueue = [];
@@ -79,7 +85,7 @@ searchResults.setAttribute("aria-live", "polite");
 searchResults.hidden = true;
 searchArea.appendChild(searchResults);
 
-MD.renderUserArea(document.getElementById("userArea"));
+await initializeUserArea(document.getElementById("userArea"));
 
 const playlistBody = document.createElement("div");
 playlistBody.className = "playlist_body";
@@ -175,19 +181,15 @@ function makeSongRow(song) {
 }
 
 // ------------------------------------------------------------
-// 5. 저장 (localStorage)
+// 5. 계정별 플레이리스트 저장과 브라우저 태그 캐시
 // ------------------------------------------------------------
 function savePlaylist() {
-    try {
-        localStorage.setItem(PLAYLIST_KEY, JSON.stringify(playlist));
-    } catch (error) {
-        console.warn("플레이리스트 저장 실패:", error);
-    }
+    return playlistStore.save(playlist).catch(showDataError);
 }
 
 function loadPlaylist() {
     try {
-        const saved = JSON.parse(localStorage.getItem(PLAYLIST_KEY));
+        const saved = playlistStore.value;
         if (!Array.isArray(saved)) return [];
         return saved
             .filter(s => s && s.title && s.artist)
@@ -662,6 +664,17 @@ searchInput.addEventListener("focus", () => {
 // ------------------------------------------------------------
 // 13. 시작
 // ------------------------------------------------------------
+addImportButton(playlistBox, "기존 브라우저 곡 가져오기", playlistStore, async old => {
+    if (!Array.isArray(old)) throw new Error("가져올 곡 목록이 올바르지 않아요.");
+    for (const item of old) {
+        if (!item || !item.title || !item.artist) continue;
+        const song = makeSong(item.title, item.artist, Array.isArray(item.genres) ? item.genres : []);
+        if (!isInPlaylist(song.id)) playlist.push(song);
+    }
+    await playlistStore.save(playlist);
+    renderPlaylist();
+    renderRecommendations();
+}, showDataError);
 renderPlaylist();
 renderRecommendations();
 

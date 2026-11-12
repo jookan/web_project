@@ -1,3 +1,7 @@
+import { openAccountState, addImportButton } from "./account_state.js";
+import { initializeUserArea } from "./firebase_nav.js";
+import { showDataError } from "./firebase_data.js";
+
 'use strict';
 
 /* =====================================================
@@ -13,49 +17,56 @@ const root = document.documentElement;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /* ---------- 상태 ---------- */
-const STORE = 'ambient-player-v1', SPSTORE = 'ambient-spotify-v1', KEYSTORE = 'ambient-yt-key';
+const playerStore = await openAccountState("aurora", "ambient-player-v1", () => ({ playlists: [], current: {} }));
+if (playerStore.loadError) showDataError(playerStore.loadError);
+const STORE = playerStore.cacheKey;
+const SPSTORE = 'ambient-spotify-v1:' + playerStore.uid;
+const KEYSTORE = 'ambient-yt-key:' + playerStore.uid;
+const MODESTORE = 'ambient-mode:' + playerStore.uid;
+await initializeUserArea(document.getElementById('userArea'));
 const MODES = ['spotify', 'youtube'];
 const MODE_LABEL = { spotify: 'Spotify', youtube: 'YouTube' };
 /* Spotify는 127.0.0.1, YouTube는 localhost 주소가 필요해요. 저장소는 주소별로 분리되고, 모드만 해시로 넘겨요 */
 const HOST_FOR = { spotify: '127.0.0.1', youtube: 'localhost' };
-const b64 = { enc: o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))), dec: s => JSON.parse(decodeURIComponent(escape(atob(s)))) };
-try {
-  const m = /^#xfer=(.+)$/.exec(location.hash);
-  if (m) {
-    const d = b64.dec(m[1]);
-    if (MODES.includes(d.mode)) localStorage.setItem('ambient-mode', d.mode);
-    if (d.key && !localStorage.getItem(KEYSTORE)) localStorage.setItem(KEYSTORE, d.key);
-    // 플레이리스트는 id 기준으로 합쳐요 (없는 것만 추가, 같은 id는 없는 곡만 추가)
-    const mine = JSON.parse(localStorage.getItem(STORE) || 'null') || { playlists: [], current: {} };
-    (d.state?.playlists || []).forEach(p => {
-      const same = mine.playlists.find(x => x.id === p.id);
-      if (!same) mine.playlists.push(p);
-      else p.tracks.forEach(t => { if (!same.tracks.some(x => x.id === t.id)) same.tracks.push(t); });
-    });
-    mine.current = { ...(d.state?.current || {}), ...(mine.current || {}) };
-    localStorage.setItem(STORE, JSON.stringify(mine));
-    history.replaceState(null, '', location.pathname + location.search);
-  }
-} catch {}
+// 호스트 변경 시 모드만 전달한다. 인증 토큰과 API 키는 URL/DB에 넣지 않는다.
+const requestedMode = new URLSearchParams(location.hash.slice(1)).get('mode');
+if (MODES.includes(requestedMode)) {
+  localStorage.setItem(MODESTORE, requestedMode);
+  history.replaceState(null, '', location.pathname + location.search);
+}
 function switchHost(m) {
   const host = HOST_FOR[m];
   if (!host || !/^https?:$/.test(location.protocol) || location.hostname === host
       || !['localhost', '127.0.0.1'].includes(location.hostname)) return false;
-  const data = { mode: m, key: localStorage.getItem(KEYSTORE), state: JSON.parse(localStorage.getItem(STORE) || 'null') };
-  location.href = `${location.protocol}//${host}:${location.port}${location.pathname}#xfer=` + b64.enc(data);
+  playerStore.flush().then(() => {
+    location.href = `${location.protocol}//${host}:${location.port}${location.pathname}#mode=` + encodeURIComponent(m);
+  }).catch(showDataError);
   return true;
 }
-let state = load(STORE) || { playlists: [{ id: uid(), name: '내 플레이리스트', tracks: [] }], current: null };
+let state = playerStore.value;
+if (!state || !Array.isArray(state.playlists)) state = { playlists: [], current: {} };
 let sp = load(SPSTORE) || {};            // { clientId, access, refresh, exp }
 let ytKey = localStorage.getItem(KEYSTORE) || '';
-let mode = localStorage.getItem('ambient-mode');
+let mode = localStorage.getItem(MODESTORE);
 if (!MODES.includes(mode)) mode = 'youtube';
 let queue = [], idx = -1, shuffle = false, loop = false;
 let playing = false;
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
-function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
+function save() {
+  const fields = ['id', 'source', 'uri', 'title', 'artist', 'artistId', 'album', 'art', 'thumb', 'vid', 'topic', 'genre'];
+  const clean = {
+    playlists: state.playlists.map(list => ({
+      id: list.id, name: list.name, mode: list.mode,
+      tracks: list.tracks.map(track => Object.fromEntries(fields.filter(key => track[key] !== undefined).map(key => [key, track[key]])))
+    })),
+    current: { spotify: state.current.spotify, youtube: state.current.youtube }
+  };
+  const pending = playerStore.save(clean);
+  pending.catch(showDataError);
+  return pending;
+}
 function saveSp() { try { localStorage.setItem(SPSTORE, JSON.stringify(sp)); } catch {} }
 // 플레이리스트는 모드(Spotify / YouTube)별로 완전히 분리돼요. state.current = { 모드: 플레이리스트 id }
 const modeLists = () => state.playlists.filter(p => p.mode === mode);
@@ -69,24 +80,8 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 4500);
 }
 
-/** 예전 YouTube 전용 페이지에서 만든 플레이리스트를 한 번만 가져옴 */
-(function migrateYouTube() {
-  if (localStorage.getItem('ambient-yt-migrated')) return;
-  const old = load('ambient-youtube-v1');
-  localStorage.setItem('ambient-yt-migrated', '1');
-  if (!old?.playlists) return;
-  for (const op of old.playlists) {
-    if (!op.tracks?.length) continue;
-    op.tracks.forEach(t => t.source = 'youtube');
-    const same = state.playlists.find(p => p.name === op.name);
-    if (same) op.tracks.forEach(t => { if (!same.tracks.some(x => x.id === t.id)) same.tracks.push(t); });
-    else state.playlists.push({ id: uid(), name: op.name + ' (YouTube)', tracks: op.tracks });
-  }
-  save();
-})();
-
 /** 모드별 분리: 예전에 여러 출처가 섞여 있던 플레이리스트는 출처별로 쪼개고, 모드마다 기본 플레이리스트를 보장 */
-(function normalizePlaylists() {
+function normalizePlaylists() {
   const out = [];
   state.playlists = state.playlists.filter(p => p.mode !== 'itunes');
   state.playlists.forEach(p => { p.tracks = p.tracks.filter(t => t.source !== 'itunes'); });
@@ -106,7 +101,8 @@ function toast(msg) {
   for (const m of MODES) if (!out.some(p => p.id === cur[m] && p.mode === m)) cur[m] = out.find(p => p.mode === m).id;
   state.current = cur;
   save();
-})();
+}
+normalizePlaylists();
 
 /* =====================================================
  * Spotify (PKCE 로그인 + Web Playback SDK)
@@ -175,7 +171,7 @@ async function handleAuthRedirect() {
   if (q.has('error')) return toast('Spotify 로그인이 취소되었어요.');
   try {
     await tokenRequest({ grant_type: 'authorization_code', code: q.get('code'), redirect_uri: redirectUri(), code_verifier: sp.verifier });
-    mode = 'spotify'; localStorage.setItem('ambient-mode', mode);
+    mode = 'spotify'; localStorage.setItem(MODESTORE, mode);
     toast('Spotify 연결 완료!');
   } catch (e) { toast('Spotify 로그인 실패: ' + e.message); }
 }
@@ -616,7 +612,7 @@ function setMode(m) {
   if (switchHost(m)) return;
   if (m === mode) return;
   stopAll();
-  mode = m; localStorage.setItem('ambient-mode', m);
+  mode = m; localStorage.setItem(MODESTORE, m);
   queue = []; idx = -1; setPlaying(false);
   updateModeUI();
   if (m === 'spotify') initSpotifyPlayer();
@@ -835,6 +831,18 @@ document.addEventListener('keydown', e => {
 
 /* ---------- 초기화 ---------- */
 (async function init() {
+  addImportButton($('playlistSelect').parentElement, '기존 브라우저 목록 가져오기', playerStore, async old => {
+    if (!old || !Array.isArray(old.playlists)) throw new Error('가져올 플레이리스트가 올바르지 않아요.');
+    for (const list of old.playlists) {
+      if (!list || !Array.isArray(list.tracks)) continue;
+      const existing = state.playlists.find(item => item.id === list.id);
+      if (!existing) state.playlists.push(list);
+      else for (const track of list.tracks) if (!existing.tracks.some(item => item.id === track.id)) existing.tracks.push(track);
+    }
+    normalizePlaylists();
+    await save();
+    renderPlaylists();
+  }, showDataError);
   $('cover').style.display = $('glow').style.display = 'none';
   $('play').innerHTML = ICON_PLAY;
   await handleAuthRedirect();

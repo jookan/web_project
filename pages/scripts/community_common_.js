@@ -1,186 +1,13 @@
-// 커뮤니티 공통 기능 (피드 / 글쓰기 / 프로필 페이지에서 같이 사용)
+// 커뮤니티 화면 공통 렌더러. 저장은 UID 기반 Firestore 어댑터에서 담당한다.
+import * as store from "./community_store.js";
+import { downloadAttachment } from "./local_files.js";
+import { showDataError } from "./firebase_data.js";
 
 (function () {
-  const POSTS_KEY = 'musicdig_posts';
-  const FOLLOW_PREFIX = 'musicdig_following_'; // + 사용자 이름
-  const CURRENT_KEY = 'musicdig_currentUser';
-
+  const { getCurrentUser, myName, myId, getPosts, getFollowing, toggleFollow,
+    getFollowerCount, countComments, addComment, addReply, renderUserArea,
+    CATEGORY_LABEL } = store;
   const COMMENT_PAGE_SIZE = 3;
-
-  const CATEGORY_LABEL = { song: '곡 추천', sheet: '악보 공유', free: '자유' };
-
-  // ---------- 저장소 도우미 ----------
-  function readJSON(storage, key) {
-    try {
-      const raw = storage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch (err) {
-      return null;
-    }
-  }
-
-  function getCurrentUser() {
-    return readJSON(sessionStorage, CURRENT_KEY) || readJSON(localStorage, CURRENT_KEY);
-  }
-
-  function myName() {
-    const user = getCurrentUser();
-    return user && user.name ? user.name : '게스트';
-  }
-
-  function savePosts(posts) {
-    try {
-      localStorage.setItem(POSTS_KEY, JSON.stringify(posts));
-      return true;
-    } catch (err) {
-      return false; // 저장 공간 부족 등
-    }
-  }
-
-  // 예시 댓글 
-  function sampleComments() {
-    const now = Date.now();
-    const min = 60 * 1000;
-    return {
-      seed1: [
-        {
-          id: 's1c1', author: '사용자2', ts: now - 300 * min,
-          text: '저는 요즘 로파이 플레이리스트를 계속 틀어놓고 있어요',
-          replies: [
-            { id: 's1c1r1', author: '사용자1', ts: now - 280 * min, text: '@사용자2 오 그거 저도 궁금해요, 공유해주세요!' },
-            { id: 's1c1r2', author: '사용자2', ts: now - 260 * min, text: '@사용자1 이따 커뮤니티에 올릴게요 ㅎㅎ' }
-          ]
-        },
-        { id: 's1c2', author: '사용자3', ts: now - 200 * min, text: '추천해주신 곡 들어봤는데 분위기 좋네요', replies: [] },
-        { id: 's1c3', author: '사용자2', ts: now - 120 * min, text: '출퇴근길에 듣기 딱 좋아요', replies: [] },
-        {
-          id: 's1c4', author: '사용자3', ts: now - 60 * min,
-          text: '다음에도 이런 곡 추천 부탁드려요!',
-          replies: [
-            { id: 's1c4r1', author: '사용자1', ts: now - 30 * min, text: '@사용자3 네, 좋아해주셔서 감사합니다!' }
-          ]
-        },
-        { id: 's1c5', author: '사용자2', ts: now - 10 * min, text: '저도 이 곡 플레이리스트에 담았어요', replies: [] }
-      ],
-      seed2: [
-        { id: 's2c1', author: '사용자1', ts: now - 8 * min, text: '악보 감사합니다! 바로 연습해볼게요', replies: [] },
-        { id: 's2c2', author: '사용자3', ts: now - 4 * min, text: '혹시 난이도가 어느 정도인가요?', replies: [
-          { id: 's2c2r1', author: '사용자2', ts: now - 2 * min, text: '@사용자3 중급 정도예요, 천천히 하시면 괜찮아요' }
-        ] }
-      ],
-      seed3: [
-        { id: 's3c1', author: '사용자1', ts: now - 40 * min, text: '3시간이면 진짜 대단하시네요 ㅋㅋ', replies: [] }
-      ]
-    };
-  }
-
-  // 처음 열었을 때 보여줄 예시 글
-  function seedPosts() {
-    const now = Date.now();
-    const seed = [
-      {
-        id: 'seed1', author: '사용자1', category: 'song', ts: now,
-        text: '요즘 계속 돌려 듣는 곡인데 추천드려요, 다들 어떤 곡 듣고 계세요?',
-        baseLikes: 128, likedBy: [], files: []
-      },
-      {
-        id: 'seed2', author: '사용자2', category: 'sheet', ts: now - 12 * 60 * 1000,
-        text: '연습하면서 만든 악보 공유합니다. 다들 참고해보세요!',
-        baseLikes: 52, likedBy: [], files: []
-      },
-      {
-        id: 'seed3', author: '사용자3', category: 'free', ts: now - 60 * 60 * 1000,
-        text: '오늘 노래방 3시간 있었는데 목 다 쉬었어요 ㅋㅋ 그래도 재밌었음',
-        baseLikes: 31, likedBy: [], files: []
-      }
-    ];
-    savePosts(seed);
-    return seed;
-  }
-
-  // 댓글 목록이 없는 예전 글에는 빈 목록 넣어줌
-  function withComments(posts) {
-    let changed = false;
-    const samples = sampleComments();
-    posts.forEach(function (p) {
-      if (!Array.isArray(p.commentList)) {
-        p.commentList = samples[p.id] || [];
-        changed = true;
-      }
-    });
-    if (changed) savePosts(posts);
-    return posts;
-  }
-
-  function getPosts() {
-    const posts = readJSON(localStorage, POSTS_KEY);
-    return withComments(Array.isArray(posts) ? posts : seedPosts());
-  }
-
-  // ---------- 팔로우 ----------
-  function getFollowing(name) {
-    const list = readJSON(localStorage, FOLLOW_PREFIX + name);
-    return Array.isArray(list) ? list : [];
-  }
-
-  // 팔로우 <-> 팔로잉 전환
-  function toggleFollow(me, target) {
-    const list = getFollowing(me);
-    const idx = list.indexOf(target);
-    if (idx >= 0) list.splice(idx, 1);
-    else list.push(target);
-    try {
-      localStorage.setItem(FOLLOW_PREFIX + me, JSON.stringify(list));
-    } catch (err) { /* 저장 실패 무시 */ }
-    return idx < 0;
-  }
-
-  // 이 사람을 팔로우하는 사용자 수
-  function getFollowerCount(target) {
-    let count = 0;
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.indexOf(FOLLOW_PREFIX) === 0 && key !== FOLLOW_PREFIX + target) {
-          const list = readJSON(localStorage, key);
-          if (Array.isArray(list) && list.indexOf(target) >= 0) count++;
-        }
-      }
-    } catch (err) { /* 무시 */ }
-    return count;
-  }
-
-  // ---------- 댓글 데이터 ----------
-  function newId(prefix) {
-    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  }
-
-  // 댓글 + 답글 전체 개수
-  function countComments(post) {
-    const list = Array.isArray(post.commentList) ? post.commentList : [];
-    return list.reduce(function (sum, c) {
-      return sum + 1 + (Array.isArray(c.replies) ? c.replies.length : 0);
-    }, 0);
-  }
-
-  function addComment(postId, author, text) {
-    const posts = getPosts();
-    const target = posts.find(function (p) { return p.id === postId; });
-    if (!target) return false;
-    target.commentList.push({ id: newId('c'), author: author, ts: Date.now(), text: text, replies: [] });
-    return savePosts(posts);
-  }
-
-  function addReply(postId, commentId, author, text) {
-    const posts = getPosts();
-    const target = posts.find(function (p) { return p.id === postId; });
-    if (!target) return false;
-    const comment = target.commentList.find(function (c) { return c.id === commentId; });
-    if (!comment) return false;
-    if (!Array.isArray(comment.replies)) comment.replies = [];
-    comment.replies.push({ id: newId('r'), author: author, ts: Date.now(), text: text });
-    return savePosts(posts);
-  }
 
   // ---------- 표시용 도우미 ----------
   function timeAgo(ts) {
@@ -203,34 +30,6 @@
     return 'community_profile.html?user=' + encodeURIComponent(name);
   }
 
-  // 상단: 로그인 상태 표시 ("○○님 / 로그아웃" 또는 "로그인" 링크)
-  function renderUserArea(userArea) {
-    const user = getCurrentUser();
-    if (user) {
-      const nameLink = document.createElement('a');
-      nameLink.href = profileUrl(user.name);
-      nameLink.textContent = user.name + '님';
-      const logoutLink = document.createElement('a');
-      logoutLink.href = '#';
-      logoutLink.textContent = user.guest ? '나가기' : '로그아웃';
-      logoutLink.addEventListener('click', function (e) {
-        e.preventDefault();
-        try {
-          sessionStorage.removeItem(CURRENT_KEY);
-          localStorage.removeItem(CURRENT_KEY);
-        } catch (err) { /* 무시 */ }
-        window.location.href = 'login.html';
-      });
-      userArea.appendChild(nameLink);
-      userArea.appendChild(logoutLink);
-    } else {
-      const loginLink = document.createElement('a');
-      loginLink.href = 'login.html';
-      loginLink.textContent = '로그인';
-      userArea.appendChild(loginLink);
-    }
-  }
-
   // ---------- 화면 조각 만들기 도우미 (입력값은 항상 textContent로 넣어 HTML 삽입 방지) ----------
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -248,21 +47,21 @@
 
   const AVATAR_COLORS = ['#f2b08a,#e9808f', '#a99cff,#7c6cf0', '#7fd1c7,#4aa8c9', '#f0c27a,#e08f5a'];
 
-  function avatarLink(name, extraClass) {
+  function avatarLink(name, extraClass, uid) {
     const a = el('a', 'avatar' + (extraClass ? ' ' + extraClass : ''), name.charAt(0));
     if (extraClass === 'small') { // 댓글 아바타 이름마다 색 다르게
       let h = 0;
       for (let i = 0; i < name.length; i++) h += name.charCodeAt(i);
       a.style.background = 'linear-gradient(135deg,' + AVATAR_COLORS[h % AVATAR_COLORS.length] + ')';
     }
-    a.href = profileUrl(name);
+    a.href = profileUrl(uid || name);
     a.title = name + ' 프로필 보기';
     return a;
   }
 
-  function nameLink(name) {
+  function nameLink(name, uid) {
     const a = el('a', 'author-name', name);
-    a.href = profileUrl(name);
+    a.href = profileUrl(uid || name);
     return a;
   }
 
@@ -300,21 +99,25 @@
     const input = el('input');
     input.type = 'text';
     input.placeholder = '댓글을 입력하세요';
+    input.value = ui.commentDraft || '';
+    input.addEventListener('input', () => { ui.commentDraft = input.value; });
     input.maxLength = 300;
     const submitBtn = el('button', 'submit-btn', '등록');
     submitBtn.type = 'button';
     const hint = el('p', 'form-hint');
 
-    function submit() {
+    async function submit() {
       const text = input.value.trim();
       if (text === '') {
         hint.textContent = '내용을 입력해주세요.';
         return;
       }
-      if (!addComment(post.id, myName(), text)) {
-        hint.textContent = '저장 공간이 부족해요.';
-        return;
-      }
+      if (submitBtn.disabled) return;
+      submitBtn.disabled = true;
+      try { await addComment(post.id, myName(), text); }
+      catch (error) { hint.textContent = error.message || '댓글을 저장하지 못했어요.'; return; }
+      finally { submitBtn.disabled = false; }
+      ui.commentDraft = '';
       ui.focus = 'comment'; // 등록 후에도 바로 이어서 쓸 수 있게 입력칸에 커서 유지
       refreshCard();
     }
@@ -341,24 +144,26 @@
     input.type = 'text';
     input.placeholder = '답글을 입력하세요';
     input.maxLength = 300;
-    input.value = ui.replyTo.mention || '';
+    input.value = ui.replyTo.draft ?? ui.replyTo.mention ?? '';
+    input.addEventListener('input', () => { if (ui.replyTo) ui.replyTo.draft = input.value; });
     const submitBtn = el('button', 'submit-btn', '등록');
     submitBtn.type = 'button';
     const cancelBtn = el('button', 'cancel-btn', '취소');
     cancelBtn.type = 'button';
     const hint = el('p', 'form-hint');
 
-    function submit() {
+    async function submit() {
       const text = input.value.trim();
       const mention = (ui.replyTo.mention || '').trim();
       if (text === '' || text === mention) {
         hint.textContent = '내용을 입력해주세요.';
         return;
       }
-      if (!addReply(post.id, comment.id, myName(), text)) {
-        hint.textContent = '저장 공간이 부족해요.';
-        return;
-      }
+      if (submitBtn.disabled) return;
+      submitBtn.disabled = true;
+      try { await addReply(post.id, comment.id, myName(), text); }
+      catch (error) { hint.textContent = error.message || '답글을 저장하지 못했어요.'; return; }
+      finally { submitBtn.disabled = false; }
       ui.replyTo = null;
       ui.openReplies[comment.id] = true;
       refreshCard();
@@ -391,11 +196,11 @@
   // 답글 한 줄 (답글에 다시 답해도 같은 단계에 붙고, 입력칸에 @이름이 미리 들어감)
   function renderReply(post, comment, reply, ui, refreshCard) {
     const item = el('div', 'reply');
-    item.appendChild(avatarLink(reply.author, 'small'));
+    item.appendChild(avatarLink(reply.author, 'small', reply.authorUid));
 
     const body = el('div', 'comment-body');
     const line = el('div', 'comment-line');
-    line.appendChild(nameLink(reply.author));
+    line.appendChild(nameLink(reply.author, reply.authorUid));
     line.appendChild(el('span', 'time', timeAgo(reply.ts)));
     body.appendChild(line);
     body.appendChild(textWithMention(reply.text));
@@ -414,11 +219,11 @@
   function renderComment(post, comment, ui, refreshCard) {
     const replies = Array.isArray(comment.replies) ? comment.replies : [];
     const item = el('div', 'comment');
-    item.appendChild(avatarLink(comment.author, 'small'));
+    item.appendChild(avatarLink(comment.author, 'small', comment.authorUid));
 
     const body = el('div', 'comment-body');
     const line = el('div', 'comment-line');
-    line.appendChild(nameLink(comment.author));
+    line.appendChild(nameLink(comment.author, comment.authorUid));
     line.appendChild(el('span', 'time', timeAgo(comment.ts)));
     body.appendChild(line);
     body.appendChild(textWithMention(comment.text));
@@ -490,13 +295,14 @@
   // ---------- 게시글 카드 만들기 ----------
   // onChange: 팔로우/좋아요 상태가 바뀐 뒤 목록 다시 그려야 할 때 호출됨
   function renderPostCard(post, onChange) {
-    const me = myName();
+    const me = myId();
     const ui = getUi(post.id);
     const card = document.createElement('article');
     card.className = 'post-card';
 
     // 이 카드 하나만 최신 데이터로 다시 그림 (댓글 열기/등록 등)
     function refreshCard() {
+      if (!card.isConnected && onChange) { onChange(); return; }
       const latest = getPosts().find(function (p) { return p.id === post.id; }) || post;
       const fresh = renderPostCard(latest, onChange);
       card.replaceWith(fresh);
@@ -508,7 +314,7 @@
     header.className = 'post-header';
 
     const info = document.createElement('div');
-    info.appendChild(nameLink(post.author));
+    info.appendChild(nameLink(post.author, post.authorUid));
     const meta = document.createElement('div');
     meta.className = 'post-meta';
     meta.appendChild(document.createTextNode(timeAgo(post.ts) + ' · '));
@@ -518,19 +324,21 @@
     meta.appendChild(tag);
     info.appendChild(meta);
 
-    header.appendChild(avatarLink(post.author));
+    header.appendChild(avatarLink(post.author, '', post.authorUid));
     header.appendChild(info);
 
-    if (post.author !== me) { // 내 글에는 팔로우 버튼을 보여주지 않음
+    if (post.authorUid !== me) { // 내 글에는 팔로우 버튼을 보여주지 않음
       const followBtn = document.createElement('button');
       followBtn.type = 'button';
       followBtn.className = 'follow-btn';
-      const following = getFollowing(me).indexOf(post.author) >= 0;
+      const following = getFollowing(me).indexOf(post.authorUid) >= 0;
       followBtn.classList.toggle('following', following);
       followBtn.textContent = following ? '팔로잉' : '팔로우';
-      followBtn.addEventListener('click', function () {
-        toggleFollow(me, post.author);
-        if (onChange) onChange();
+      followBtn.addEventListener('click', async function () {
+        followBtn.disabled = true;
+        try { await toggleFollow(me, post.authorUid); if (onChange) onChange(); }
+        catch (error) { showDataError(error); }
+        finally { followBtn.disabled = false; }
       });
       header.appendChild(followBtn);
     }
@@ -546,19 +354,16 @@
     if (Array.isArray(post.files) && post.files.length > 0) {
       const attachBox = document.createElement('div');
       attachBox.className = 'attachments';
-      post.files.forEach(function (f) {
-        if (typeof f.dataUrl === 'string' && f.dataUrl.indexOf('data:image/') === 0) {
-          const img = document.createElement('img');
-          img.className = 'attach-img';
-          img.src = f.dataUrl;
-          img.alt = f.name;
-          attachBox.appendChild(img);
-        } else {
-          const chip = document.createElement('span');
-          chip.className = 'attach-chip';
-          chip.textContent = '📎 ' + f.name + ' (' + formatSize(f.size || 0) + ')';
-          attachBox.appendChild(chip);
+      post.files.forEach(function (f, index) {
+        const chip = el('span', 'attach-chip', '📎 ' + f.name + ' (' + formatSize(f.size || 0) + ') · 원본은 작성자 기기에 보관');
+        if (post.authorUid === myId()) {
+          const download = linkBtn('이 기기에서 열기', async function () {
+            try { await downloadAttachment(myId(), post.id, index); }
+            catch (error) { showDataError(error); }
+          });
+          chip.appendChild(download);
         }
+        attachBox.appendChild(chip);
       });
       card.appendChild(attachBox);
     }
@@ -576,16 +381,11 @@
     likeCount.textContent = (post.baseLikes || 0) + (Array.isArray(post.likedBy) ? post.likedBy.length : 0);
     likeBtn.appendChild(likeCount);
     likeBtn.appendChild(document.createTextNode(' ❤'));
-    likeBtn.addEventListener('click', function () {
-      const posts = getPosts();
-      const target = posts.find(function (p) { return p.id === post.id; });
-      if (!target) return;
-      if (!Array.isArray(target.likedBy)) target.likedBy = [];
-      const idx = target.likedBy.indexOf(me);
-      if (idx >= 0) target.likedBy.splice(idx, 1);
-      else target.likedBy.push(me);
-      savePosts(posts);
-      if (onChange) onChange();
+    likeBtn.addEventListener('click', async function () {
+      likeBtn.disabled = true;
+      try { await store.toggleLike(post.id); if (onChange) onChange(); }
+      catch (error) { showDataError(error); }
+      finally { likeBtn.disabled = false; }
     });
 
     const commentBtn = el('button', 'comment-btn', '💬 ' + countComments(post));
@@ -631,7 +431,12 @@
     getCurrentUser: getCurrentUser,
     myName: myName,
     getPosts: getPosts,
-    savePosts: savePosts,
+    ready: store.ready,
+    subscribe: store.subscribe,
+    myId: myId,
+    getProfile: store.getProfile,
+    resolveUid: store.resolveUid,
+    createPost: store.createPost,
     getFollowing: getFollowing,
     toggleFollow: toggleFollow,
     getFollowerCount: getFollowerCount,
@@ -643,3 +448,5 @@
     renderPostCard: renderPostCard
   };
 })();
+
+export default window.MD;

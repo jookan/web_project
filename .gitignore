@@ -1,3 +1,7 @@
 .gitignore
 AGENTS.md
 PROGRESS.md
+node_modules/
+test-results/
+playwright-report/
+pages/scripts/config.js

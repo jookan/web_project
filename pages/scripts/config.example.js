@@ -2,5 +2,5 @@
 //   cp config.example.js config.js
 // config.js는 .gitignore에 있어서 GitHub에 올라가지 않습니다.
 const CONFIG = {
-    LASTFM_KEY: "YOUR_LASTFM_API_KEY",
+    LASTFM_KEY: "16632f96708e4d21b804c46042f1ad22",
 };

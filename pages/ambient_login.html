@@ -96,10 +96,11 @@
 
         <button class="btn btn-primary" id="submit" type="submit"><span id="submitText">로그인</span></button>
         <div class="or">또는</div>
+        <button class="btn btn-ghost" id="googleLogin" type="button">Google로 로그인</button>
         <button class="btn btn-ghost" id="guest" type="button">게스트로 둘러보기</button>
       </form>
 
-      <p class="note">데모 로그인이에요. 별도의 계정 서버가 없어서 입력한 비밀번호는 저장하거나 전송하지 않고, 표시할 이름만 이 브라우저에 기억해요.</p>
+      <p class="note">Google 계정으로 로그인하면 개인 자료를 계정에 저장해요. 게스트 자료와 파일 원본은 이 브라우저에 보관해요.</p>
     </section>
   </div>
 </main>
@@ -107,6 +108,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="scripts/ambient_session.js?v=1"></script>
-<script src="scripts/ambient_login.js"></script>
+<script type="module" src="scripts/ambient_login.js"></script>
 </body>
 </html>

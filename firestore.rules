@@ -1,0 +1,116 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owner(uid) { return signedIn() && request.auth.uid == uid; }
+    function profile(data) {
+      return data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 80
+        && data.photoURL is string && data.photoURL.size() <= 2000;
+    }
+    function attachment(file) {
+      return file.keys().hasAll(['name', 'size', 'type']) && file.keys().hasOnly(['name', 'size', 'type'])
+        && file.name is string && file.name.size() <= 500
+        && file.size is int && file.size >= 0 && file.size <= 5242880
+        && file.type is string && file.type.size() <= 200;
+    }
+    function attachments(files) {
+      return files is list && files.size() <= 3
+        && (files.size() < 1 || attachment(files[0]))
+        && (files.size() < 2 || attachment(files[1]))
+        && (files.size() < 3 || attachment(files[2]));
+    }
+    function post(data) {
+      return data.keys().hasAll(['authorUid', 'category', 'text', 'files', 'createdAt'])
+        && data.keys().hasOnly(['authorUid', 'category', 'text', 'files', 'createdAt'])
+        && data.authorUid is string && data.category in ['song', 'sheet', 'free']
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 10000
+        && attachments(data.files) && data.createdAt is timestamp;
+    }
+
+    // 비공개 프로필과 개인 자료에는 본인만 접근한다.
+    match /users/{uid} {
+      allow read: if owner(uid);
+      allow create: if owner(uid) && profile(request.resource.data)
+        && request.resource.data.keys().hasOnly(['displayName', 'photoURL', 'createdAt'])
+        && request.resource.data.createdAt == request.time;
+      allow update: if owner(uid) && profile(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']);
+
+      match /appData/{name} {
+        allow read: if owner(uid);
+        allow create, update: if owner(uid) && name in ['digging', 'aurora']
+          && request.resource.data.keys().hasOnly(['payload', 'updatedAt'])
+          && request.resource.data.payload is string && request.resource.data.payload.size() <= 800000
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if owner(uid);
+      }
+      match /scores/{scoreId} {
+        allow read: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['scoreId', 'fileName', 'fileSize', 'lastModified', 'pageNumber', 'practice', 'updatedAt'])
+          && request.resource.data.scoreId is string && request.resource.data.scoreId.size() <= 2000
+          && request.resource.data.fileName is string && request.resource.data.fileName.size() <= 500
+          && request.resource.data.fileSize is int && request.resource.data.fileSize >= 0
+          && request.resource.data.lastModified is number
+          && request.resource.data.pageNumber is int && request.resource.data.pageNumber >= 1
+          && request.resource.data.practice is map
+          && request.resource.data.practice.keys().hasOnly(['bpm', 'beatsPerBar', 'steps', 'metronome'])
+          && request.resource.data.practice.bpm is number && request.resource.data.practice.bpm >= 1
+          && request.resource.data.practice.beatsPerBar is int && request.resource.data.practice.beatsPerBar >= 1
+          && request.resource.data.practice.steps is list && request.resource.data.practice.steps.size() <= 5000
+          && (!('metronome' in request.resource.data.practice) || request.resource.data.practice.metronome is bool)
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if owner(uid);
+      }
+    }
+
+    // 커뮤니티에서 보여줄 필드만 공개한다. 이메일과 토큰은 허용하지 않는다.
+    match /publicProfiles/{uid} {
+      allow read: if true;
+      allow create, update: if owner(uid) && profile(request.resource.data)
+        && request.resource.data.keys().hasOnly(['displayName', 'photoURL', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+    }
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if signedIn() && post(request.resource.data)
+        && request.resource.data.authorUid == request.auth.uid && request.resource.data.createdAt == request.time;
+      allow update: if owner(resource.data.authorUid) && post(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'category', 'files']);
+      allow delete: if owner(resource.data.authorUid);
+    }
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['postId', 'parentId', 'authorUid', 'text', 'createdAt'])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.postId is string && request.resource.data.parentId is string
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 300
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
+        && (request.resource.data.parentId == ''
+          || (get(/databases/$(database)/documents/comments/$(request.resource.data.parentId)).data.postId == request.resource.data.postId
+            && get(/databases/$(database)/documents/comments/$(request.resource.data.parentId)).data.parentId == ''));
+      allow delete: if owner(resource.data.authorUid);
+    }
+    match /postLikes/{likeId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['userUid', 'postId', 'createdAt'])
+        && request.resource.data.userUid == request.auth.uid
+        && likeId == request.resource.data.postId + '_' + request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId));
+      allow delete: if owner(resource.data.userUid);
+    }
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['followerUid', 'targetUid', 'createdAt'])
+        && request.resource.data.followerUid == request.auth.uid
+        && request.resource.data.targetUid != request.auth.uid
+        && followId == request.auth.uid + '_' + request.resource.data.targetUid
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.targetUid));
+      allow delete: if owner(resource.data.followerUid);
+    }
+  }
+}

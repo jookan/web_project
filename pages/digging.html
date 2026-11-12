@@ -10,8 +10,7 @@
     <link rel="stylesheet" href="web_programming/css/ambient_navigation.css">
     <link rel = "stylesheet" href = "web_programming/css/digging.css">
     <script src="scripts/ambient_session.js" defer></script>
-    <script src = "scripts/config.js" defer></script>
-    <script type="module" src="scripts/digging.js"></script>
+    <script type="module" src="scripts/digging.js?v=2"></script>
 </head>
 <body class="discovery-page">
     <div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
@@ -33,6 +32,29 @@
             <h1>취향을 따라, 새로운 음악으로.</h1>
             <p>좋아하는 곡을 모으고, 익숙한 장르와 새로운 장르를 함께 탐색해 보세요.</p>
         </div>
+        <section class="api-setup box" aria-label="API 키 설정">
+            <div id="lfmPanel" class="setup" hidden>
+                <p><b>Last.fm API 키</b>가 필요해요. 무료이고 처음 한 번만 입력하면 이 브라우저에 저장돼요.</p>
+                <ol>
+                    <li><a href="https://www.last.fm/join" target="_blank" rel="noopener">Last.fm</a>에 가입하고 로그인</li>
+                    <li><a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener">API 계정 만들기</a>에서 <b>Application name</b>(아무 이름)과 이메일만 입력 → <b>Submit</b><br>
+                        <small>Callback URL·Homepage는 비워도 돼요.</small></li>
+                    <li>생성된 화면의 <b>API key</b>(32자리) 복사 <small>— Shared secret은 필요 없어요.</small><br>
+                        <small>잃어버리면 <a href="https://www.last.fm/api/accounts" target="_blank" rel="noopener">내 API 계정</a>에서 다시 볼 수 있어요.</small></li>
+                </ol>
+                <form id="lfmKeyForm" class="setup_row">
+                    <input id="lfmKey" type="text" placeholder="API 키 붙여넣기" autocomplete="off" aria-label="Last.fm API 키">
+                    <button type="submit">저장</button>
+                </form>
+            </div>
+            <div id="lfmStatus" class="setup_row" hidden>
+                <span class="setup_ok">Last.fm API 키 저장됨 ✓</span>
+                <button id="lfmKeyReset" type="button">키 변경</button>
+            </div>
+            <p id="ytKeyHint" class="setup_hint" hidden>
+                추천 곡을 플레이리스트에 담으려면 <a href="aurora.html">Aurora</a>(YouTube 모드)에서 <b>YouTube API 키</b>도 저장해주세요.
+            </p>
+        </section>
         <section class="discovery-search" aria-label="음악 검색">
             <form class="search_login_form" role="search">
                 <label class="visually-hidden" for="songSearch">가수 또는 노래 제목</label>
@@ -43,7 +65,12 @@
         </section>
         <div class="discovery-layout">
             <aside class="playlist box" aria-labelledby="playlistTitle">
-                <div class="playlist-heading"><span class="eyebrow">MY COLLECTION</span><h2 id="playlistTitle">플레이리스트</h2></div>
+                <div class="playlist-heading">
+                    <span class="eyebrow">AURORA PLAYLIST</span>
+                    <h2 id="playlistTitle">플레이리스트</h2>
+                    <select id="auroraPlaylistSelect" class="playlist_select" aria-label="Aurora 플레이리스트 선택"></select>
+                    <p class="playlist_hint">Aurora의 YouTube 플레이리스트와 연동돼요. 곡의 태그로 장르를 분석해 추천해요.</p>
+                </div>
             </aside>
             <div class="playlist_recommendation">
                 <section class="recommendation_section box" aria-label="비슷한 장르 추천">

@@ -55,7 +55,7 @@ let playing = false;
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
 function save() {
-  const fields = ['id', 'source', 'uri', 'title', 'artist', 'artistId', 'album', 'art', 'thumb', 'vid', 'topic', 'genre'];
+  const fields = ['id', 'source', 'uri', 'title', 'artist', 'artistId', 'album', 'art', 'thumb', 'vid', 'topic', 'genre', 'tags'];
   const clean = {
     playlists: state.playlists.map(list => ({
       id: list.id, name: list.name, mode: list.mode,
@@ -282,6 +282,7 @@ async function searchYT(q) {
         id: 'yt:' + it.id, source: 'youtube', vid: it.id, title, artist, topic,
         album: it.snippet.channelTitle,
         art: (th.maxres || th.medium || th.high).url, thumb: (th.medium || th.default).url,
+        tags: (it.snippet.tags || []).slice(0, 15),   // 디깅 페이지가 장르 분석에 사용해요
         genre: (it.snippet.tags || []).slice(0, 15).join(' ')
       };
     })
@@ -827,6 +828,25 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'f' || e.key === 'F') toggleImmersive();
   else if (e.key === 'ArrowRight') $('next').click();
   else if (e.key === 'ArrowLeft') $('prev').click();
+});
+
+/* ---------- 다른 탭(디깅 페이지 등)에서 바뀐 플레이리스트 반영 ---------- */
+// 디깅에서 곡을 담거나 빼면 같은 계정 캐시 키가 바뀌어요. 저장은 하지 않고 화면과 재생 큐만 맞춰요.
+window.addEventListener('storage', e => {
+  if (e.key !== STORE || !e.newValue) return;
+  let next;
+  try { next = JSON.parse(e.newValue); } catch { return; }
+  if (!next || !Array.isArray(next.playlists)) return;
+  next.playlists = next.playlists.filter(p => p && MODES.includes(p.mode) && Array.isArray(p.tracks));
+  const cur = next.current && typeof next.current === 'object' ? next.current : {};
+  for (const m of MODES) {
+    if (!next.playlists.some(p => p.mode === m)) next.playlists.push({ id: uid(), mode: m, name: '내 플레이리스트', tracks: [] });
+    if (!next.playlists.some(p => p.id === cur[m] && p.mode === m)) cur[m] = next.playlists.find(p => p.mode === m).id;
+  }
+  next.current = cur;
+  state = next;
+  syncQueue();
+  renderPlaylists();
 });
 
 /* ---------- 초기화 ---------- */

@@ -1,5 +1,17 @@
 /* Ambient 공통 색상과 Aurora의 반투명 패널을 사용하는 음악 디깅 화면. */
 .discovery-page { min-height: 100dvh; }
+.api-setup [hidden] { display: none !important; }
+.api-setup { margin-bottom: 20px; padding: 16px 20px; font-size: 13px; line-height: 1.6; }
+.api-setup .setup p { margin: 0 0 6px; }
+.api-setup .setup ol { margin: 0 0 12px; padding-left: 20px; color: var(--fg2); }
+.api-setup .setup li { margin-bottom: 4px; }
+.api-setup a { color: #9ed0ff; }
+.api-setup small { color: var(--fg3); }
+.setup_row { display: flex; align-items: center; gap: 8px; }
+.setup_row input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--stroke-2); border-radius: 10px; background: var(--glass-2); color: var(--fg); font-size: 13px; }
+.setup_ok { flex: 1; color: var(--fg3); }
+.setup_hint { margin: 10px 0 0; color: #ffc7ab; }
+#lfmStatus:not([hidden]) + .setup_hint:not([hidden]) { padding-top: 10px; border-top: 1px solid var(--stroke); }
 .discovery-search { position: relative; z-index: 3; margin-bottom: 28px; }
 .search_login_form { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 20px; border: 1px solid var(--stroke-2); border-radius: 16px; background: var(--glass); backdrop-filter: blur(24px); }
 .search_login_form:focus-within { border-color: #ffb17a; box-shadow: 0 0 0 3px #ff8a5c12; }
@@ -16,7 +28,12 @@
 .playlist { position: sticky; top: 24px; min-width: 0; padding: 24px; }
 .playlist-heading { padding-bottom: 18px; margin-bottom: 8px; border-bottom: 1px solid var(--stroke); }
 .playlist h2 { margin: 10px 0 0; font-size: 20px; letter-spacing: -.03em; }
+.playlist_select { width: 100%; margin-top: 12px; padding: 8px 10px; border: 1px solid var(--stroke-2); border-radius: 10px; background: var(--glass-2); color: var(--fg); font-size: 13px; }
+.playlist_select option { background: #191721; color: var(--fg); }
+.playlist_hint { margin: 10px 0 0; color: var(--fg3); font-size: 12px; line-height: 1.6; }
 .playlist_body { max-height: 65dvh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #51465d transparent; }
+.discovery-page .migrate_button { width: 100%; margin-top: 12px; color: #ffc7ab; border-color: #ff8a5c55; background: #ff8a5c14; }
+.discovery-page .migrate_button:disabled { opacity: .7; cursor: progress; }
 .playlist_controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 0; }
 .playlist_recommendation { display: grid; gap: 24px; min-width: 0; }
 .recommendation_section { min-height: 220px; padding: 24px; }

@@ -26,7 +26,7 @@ Authentication으로 연결했으며, 이 방식을 사용하려면 콘솔에서
 | 댓글·답글 | `comments/{commentId}` | 공개 조회, 로그인한 본인 명의로 생성 |
 | 좋아요 | `postLikes/{postId}_{uid}` | 공개 조회, 본인의 항목만 생성·삭제 |
 | 팔로우 | `follows/{uid}_{targetUid}` | 공개 조회, 본인의 항목만 생성·삭제 |
-| 디깅 곡 목록 | `users/{uid}/appData/digging` | 본인만 접근 |
+| 예전 디깅 곡 목록 (Aurora로 옮기기용, 새로 저장하지 않음) | `users/{uid}/appData/digging` | 본인만 접근 |
 | Aurora 플레이리스트·선택 목록 | `users/{uid}/appData/aurora` | 본인만 접근 |
 | PDF 정보·연습 설정 | `users/{uid}/scores/{scoreId}` | 본인만 접근 |
 
@@ -53,14 +53,17 @@ JSON은 UTF-8 800,000바이트까지 허용하며 초과하면 로컬에 보관�
 - 게스트는 커뮤니티를 읽을 수 있고 개인 곡 목록·악보는 브라우저에만 저장한다.
   게시글·댓글·좋아요·팔로우를 저장하려면 로그인해야 한다.
 - 곡 태그 캐시는 외부 API 요청 절약을 위해 브라우저에 유지한다.
-- Spotify 인증 토큰·PKCE 값과 YouTube API 키는 UID별 브라우저 저장소에만 두며 DB에 보내지 않는다.
+- Spotify 인증 토큰·PKCE 값과 YouTube·Last.fm API 키는 UID별 브라우저 저장소에만 두며 DB에 보내지 않는다.
+  (`ambient-yt-key:{uid}`, `ambient-lastfm-key:{uid}`) 키는 각 사용자가 직접 발급받아 화면에서 입력한다.
   로컬 개발의 `localhost`와 `127.0.0.1`은 서로 다른 사이트 저장소이므로 각각 로그인/서비스 연결이 필요하다.
 
 ## 기존 자료 가져오기
 
 예전 계정 구분 없는 데이터는 삭제하지 않으며 다른 계정에 자동으로 가져오지 않는다.
 
-- 디깅: `기존 브라우저 곡 가져오기`로 현재 계정 목록에 중복 없이 합친다.
+- 디깅: 디깅은 이제 Aurora 플레이리스트(`appData/aurora`)를 함께 쓴다. 예전 디깅 목록(`appData/digging`과
+  계정 구분 전 `musicdig_playlist_v2`)에 남은 곡은 `예전 디깅 곡 N곡 Aurora로 옮기기`로 YouTube 영상을 찾아
+  현재 Aurora 목록에 담는다. 원본은 지우지 않고, 옮긴 곡 id만 `musicdig_moved_to_aurora:{uid}`에 기억한다.
 - Aurora: `기존 브라우저 목록 가져오기`로 현재 계정 목록에 합친다.
 - 악보: `기존 브라우저 악보 가져오기`로 원래 IndexedDB의 PDF와 설정을 복사한다.
 - 예전 커뮤니티 예시 글/댓글과 이름 기반 팔로우는 실사용자의 UID를 검증할 수 없으므로

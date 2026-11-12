@@ -13,7 +13,7 @@ HTML·CSS·JavaScript ES 모듈로 구성한 정적 사이트이며, 별도의 �
 | --- | --- | --- |
 | 로그인 | [ambient_login.html](pages/ambient_login.html) | Google 로그인, 이메일 회원가입·로그인, 비밀번호 재설정, 로그인 유지, 게스트 입장 |
 | 시작 | [ambient_hub.html](pages/ambient_hub.html) | 사용자 이름 표시, 각 서비스 이동, 로그아웃 |
-| 음악 디깅 | [digging.html](pages/digging.html) | 곡 검색, 장르 분석, 비슷한 장르·다른 장르 추천, 개인 곡 목록 저장 |
+| 음악 디깅 | [digging.html](pages/digging.html) | Aurora 플레이리스트 연동, 곡 태그 기반 장르 분석, 비슷한 장르·다른 장르 추천 |
 | 커뮤니티 | [community.html](pages/community.html) | 게시글 피드, 카테고리·팔로잉 필터, 댓글·답글, 좋아요, 팔로우 |
 | 글쓰기 | [community_write.html](pages/community_write.html) | 카테고리 선택, 본문 작성, 첨부파일 정보 등록 |
 | 프로필 | [community_profile.html](pages/community_profile.html) | 작성한 글·좋아요한 글, 팔로워·팔로잉 수 확인 |
@@ -44,13 +44,13 @@ HTML·CSS·JavaScript ES 모듈로 구성한 정적 사이트이며, 별도의 �
 
 ### 음악 디깅
 
-- Last.fm에서 곡 제목·아티스트를 검색합니다.
-- 곡 태그 → 아티스트 태그 → MusicBrainz 순서로 장르 정보를 보완합니다.
-- 개인 목록의 장르를 바탕으로 비슷한 장르 또는 겹치지 않는 장르의 곡을 추천합니다.
-- 곡을 개인 목록에 추가·삭제하고, 로그인한 계정의 Firestore에 저장합니다.
+- Aurora의 YouTube 플레이리스트(`users/{uid}/appData/aurora`)를 그대로 불러와 사용합니다. 화면에서 플레이리스트를 고르면 Aurora에서도 같은 목록이 선택됩니다.
+- 곡마다 **YouTube 영상 태그**(장르 사전에 있는 것만)와 **Last.fm 곡 → 아티스트 태그**를 합쳐 장르를 정하고, 둘 다 없으면 MusicBrainz로 보완합니다.
+- 플레이리스트 장르를 바탕으로 비슷한 장르 또는 겹치지 않는 장르의 곡을 추천합니다.
+- 검색·추천 곡의 `+`는 YouTube Data API로 재생 가능한 영상을 찾아 Aurora 플레이리스트에 담고, `✕`는 Aurora 플레이리스트에서 뺍니다. 재생은 `▶ Aurora에서 재생`으로 Aurora에서 합니다.
+- Aurora가 다른 탭에 열려 있어도 한쪽의 변경이 다른 쪽에 바로 반영됩니다.
+- 예전 디깅 전용 목록(`appData/digging`, 계정 구분 전 브라우저 목록)에 곡이 남아 있으면 `예전 디깅 곡 N곡 Aurora로 옮기기` 버튼으로 YouTube 영상을 찾아 옮길 수 있습니다. 원본은 지우지 않습니다.
 - 장르 태그 캐시는 외부 API 요청을 줄이기 위해 브라우저에 보관합니다.
-
-**현재 디깅 화면의 재생 버튼은 선택 상태만 바꿉니다.** `digging.js`의 `playSong()`에 실제 오디오·YouTube 재생 연결이 남아 있습니다.
 
 ### Aurora 음악 플레이어
 
@@ -96,7 +96,7 @@ Aurora 원본: [RE2031 / ambient-music-site](https://github.com/RE2031/ambient-m
 | 디깅·Aurora 개인 목록 | `users/{uid}/appData/{digging,aurora}` | 같은 계정으로 불러오기 |
 | PDF 정보·연습 설정 | `users/{uid}/scores/{scoreId}` | 같은 계정으로 불러오기 |
 | PDF·첨부파일 원본 | 브라우저 IndexedDB | 저장한 브라우저에만 존재 |
-| Spotify 인증 값·YouTube API 키 | 계정별 브라우저 저장소 | Firestore에 전송하지 않음 |
+| Spotify 인증 값·YouTube·Last.fm API 키 | 계정별 브라우저 저장소 | Firestore에 전송하지 않음 |
 | 게스트 개인 목록·악보 | 브라우저 저장소 | 계정 DB에 저장하지 않음 |
 
 Cloud Storage는 사용하지 않습니다. 브라우저 데이터를 삭제하면 해당 기기에만 있던 파일 원본이 사라질 수 있으므로 원본은 별도로 보관해야 합니다.
@@ -133,15 +133,13 @@ Firebase 웹 앱 설정은 브라우저로 전달됩니다. 실제 데이터 접
 
 ### 3. 디깅 검색 설정
 
-프로젝트 루트의 PowerShell에서 예시 파일을 복사합니다. 기존 `config.js`가 있다면 덮어쓰지 말고 값을 확인합니다.
+Last.fm API 키는 저장소에 넣지 않습니다. 사용하는 사람이 각자 발급받아 디깅 화면에 입력하며, 키는 그 사람의 브라우저에 계정(UID)별로만 저장되고 Firestore에는 보내지 않습니다. (Aurora의 YouTube 키와 같은 방식)
 
-```powershell
-Copy-Item pages/scripts/config.example.js pages/scripts/config.js
-```
+1. [Last.fm API 계정 만들기](https://www.last.fm/api/account/create)에서 앱 이름과 이메일만 입력해 API key(32자리)를 발급합니다. Shared secret은 사용하지 않습니다.
+2. 음악 디깅 화면 상단의 `Last.fm API 키` 칸에 붙여넣고 저장합니다.
+3. 추천 곡을 플레이리스트에 담으려면 Aurora(YouTube 모드)에서 YouTube API 키도 저장합니다.
 
-[Last.fm API 계정](https://www.last.fm/api/account/create)에서 발급한 API 키를 `config.js`의 `LASTFM_KEY`에 입력합니다. Shared secret은 사용하지 않습니다.
-
-`config.js`는 Git 추적에서 제외되어 있으므로 배포 환경에도 별도로 준비해야 합니다. 이 파일 분리는 브라우저에 전달된 키를 숨기는 기능은 아닙니다.
+예전에 쓰던 `config.js`/`config.example.js` 방식은 없앴습니다. 로컬에 `config.js`가 남아 있다면 지워도 됩니다.
 
 ### 4. Aurora 서비스 연결
 

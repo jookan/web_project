@@ -23,7 +23,7 @@ const cloud = {
   'posts/post-b': {authorUid:'user-b', category:'song', text:'Shared post', files:[], createdAt:2000},
   'postLikes/post-b_user-b': {userUid:'user-b', postId:'post-b', createdAt:3000},
   'users/user-a/appData/digging': {payload:JSON.stringify([{id:'artist|||saved',title:'Saved',artist:'Artist',genres:['jazz']}]),updatedAt:1000},
-  'users/user-a/appData/aurora': {payload:JSON.stringify({playlists:[{id:'yt-main',name:'Saved list',mode:'youtube',tracks:[]}],current:{youtube:'yt-main'}}),updatedAt:1000}
+  'users/user-a/appData/aurora': {payload:JSON.stringify({playlists:[{id:'yt-main',name:'Saved list',mode:'youtube',tracks:[{id:'yt:saved1',source:'youtube',vid:'saved1',title:'Saved',artist:'Artist',art:'',thumb:'',tags:['jazz','Artist']}]}],current:{youtube:'yt-main'}}),updatedAt:1000}
 };
 const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << >> >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF');
 let browser;
@@ -78,12 +78,22 @@ let browser;
   const downloading=page.waitForEvent('download',{timeout:5000}).catch(async error => { console.error('Attachment UI:',await page.locator('#cloud-data-error').allTextContents()); throw error; });
   await page.getByRole('button',{name:'이 기기에서 열기'}).click();
   assert.equal((await downloading).suggestedFilename(),'local.pdf');
+  // 디깅은 Aurora 플레이리스트를 함께 쓰고, YouTube 태그(jazz)에서 장르를 뽑는다.
   await open('digging.html');
-  await page.locator('.playlist_body').getByText(/Saved/).first().waitFor();
+  await page.locator('#auroraPlaylistSelect option', {hasText:'Saved list'}).waitFor({state:'attached'});
+  await page.locator('.playlist_body .song_row', {hasText:'Saved'}).getByText('jazz',{exact:true}).waitFor();
+  // 예전 디깅 목록 중 Aurora에 없는 곡(Imported)만 옮기기 대상으로 보인다. (Saved는 이미 Aurora에 있음)
   await page.evaluate(() => localStorage.setItem('musicdig_playlist_v2',JSON.stringify([{title:'Imported',artist:'Artist',genres:['jazz']}])));
   await page.reload();
-  await page.getByRole('button',{name:'기존 브라우저 곡 가져오기'}).click();
-  await page.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem('__test_cloud'))['users/user-a/appData/digging'].payload).length===2);
+  await page.getByRole('button',{name:'예전 디깅 곡 1곡 Aurora로 옮기기'}).waitFor();
+  // ✕는 Aurora 계정 목록에서 곡을 뺀다.
+  await page.locator('.playlist_body .song_row', {hasText:'Saved'}).getByRole('button',{name:'✕'}).click();
+  await page.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem('__test_cloud'))['users/user-a/appData/aurora'].payload).playlists[0].tracks.length===0);
+  // Last.fm 키는 계정별 브라우저 저장소에만 저장한다.
+  await page.locator('#lfmKey').fill('0123456789abcdef0123456789abcdef');
+  await page.locator('#lfmKeyForm button[type=submit]').click();
+  await page.locator('#lfmStatus').waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem('ambient-lastfm-key:user-a')),'0123456789abcdef0123456789abcdef');
   await open('aurora.html');
   await page.locator('#playlistSelect option', {hasText:'Saved list'}).waitFor({state:'attached'});
   page.once('dialog', dialog => dialog.accept('New list'));

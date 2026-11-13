@@ -130,11 +130,8 @@ Aurora와 악보 화면의 상단 메뉴로 두 화면을 오갈 수 있습니�
 - 기존 음악 추천: `pages/digging.html`
 - 기존 커뮤니티: `pages/community.html`
 
-Aurora의 재생 JavaScript와 기존 CSS, PDF 연습 모듈과 기존 `upload.css`는 그대로 유지합니다.
 악보 화면에는 별도 `pages/web_programming/css/ambient_practice.css`로 Ambient 스타일을 적용합니다.
-Ambient 로그인은 기존 브라우저 데모 방식이며, Spotify·YouTube 연결은 기존 계정/API 설정을 사용합니다.
-Spotify 앱의 Redirect URI는 실제로 접속하는 `pages/aurora.html` 주소와 일치해야 합니다.
-기존 `ambient/aurora/` 주소를 등록했다면 새 주소로 변경해야 합니다.
+Ambient 로그인은 브라우저 데모 방식이며, Aurora의 음악 검색에는 YouTube Data API 키를 사용합니다.
 악보와 플레이리스트는 사이트 주소별 브라우저 저장소를 사용하므로 다른 배포 주소의 자료가 자동 이전되지는 않습니다.
 
 ### 파일 분류
@@ -160,7 +157,7 @@ Ambient 파일은 기존 `pages` 구조에 맞춰 종류별로 정리했습니�
 
 ## Aurora 스트리밍 플레이어
 
-Aurora는 Spotify와 YouTube에서 음악을 검색하고, 원하는 곡을 플레이리스트에 담아 재생하는 Ambient 음악 플레이어입니다. 재생 중인 곡의 커버 이미지에 맞춰 배경과 화면 강조색이 바뀝니다.
+Aurora는 YouTube에서 음악을 검색하고, 원하는 곡을 플레이리스트에 담아 재생하는 Ambient 음악 플레이어입니다. 재생 중인 곡의 커버 이미지에 맞춰 배경과 화면 강조색이 바뀝니다.
 
 - 페이지: [`pages/aurora.html`](pages/aurora.html)
 - 구현: [`aurora.js`](pages/scripts/aurora.js), [`aurora.css`](pages/web_programming/css/aurora.css)
@@ -168,15 +165,13 @@ Aurora는 Spotify와 YouTube에서 음악을 검색하고, 원하는 곡을 플�
 
 ### 주요 기능
 
-- **음악 검색과 재생** — Spotify Web API와 YouTube Data API v3로 곡을 검색합니다. Spotify Web Playback SDK와 YouTube IFrame Player로 재생하며, 재생·일시정지, 이전·다음 곡, 재생 위치와 볼륨 조절, 셔플과 반복을 지원합니다.
-- **플레이리스트 관리** — 서비스별로 목록을 만들고 이름을 바꾸거나 삭제할 수 있습니다. 검색 결과에서 곡을 추가하고 목록에서 제거할 수 있으며, 목록은 브라우저의 `localStorage`에 저장됩니다.
-- **곡에 따라 바뀌는 배경** — Spotify 앨범 커버나 YouTube 썸네일에서 대표 색을 추출해 Canvas 애니메이션과 진행 표시줄에 적용합니다. Spotify 장르 정보가 있으면 배경 움직임과 색에 반영하고, 장르 정보가 없으면 이미지 색으로 분위기를 정합니다.
-- **몰입 모드** — 화면의 몰입 모드 버튼이나 `F` 키로 조작 영역을 숨기거나 다시 표시할 수 있습니다.
+- **음악 검색과 재생** — YouTube Data API v3로 곡을 검색하고 YouTube IFrame Player로 재생합니다. 재생·일시정지, 이전·다음 곡, 재생 위치와 볼륨 조절, 셔플과 반복을 지원합니다.
+- **플레이리스트 관리** — 왼쪽 패널에서 목록을 만들거나 삭제할 수 있고, 연필 버튼을 누르면 같은 자리에서 이름을 바꿀 수 있습니다. 검색 결과에서 곡을 추가하고 목록에서 제거할 수 있으며, 목록은 브라우저의 `localStorage`에 저장됩니다.
+- **곡에 따라 바뀌는 배경** — YouTube 썸네일에서 대표 색을 추출해 Canvas 애니메이션과 진행 표시줄에 적용합니다. 곡의 태그도 배경 움직임과 색에 반영합니다.
+- **전체화면** — 전체화면 버튼이나 `F` 키로 앨범 커버와 배경을 화면 가득 볼 수 있습니다. 마우스를 화면 아래로 옮기면 재생 조작이 나타나고, `Esc` 또는 `F` 키로 전체화면을 종료할 수 있습니다.
 
 ### 사용 방법
 
 1. 로컬 웹 서버에서 루트 `index.html`을 열고 로그인 또는 게스트 입장 후 시작 화면의 `Aurora 스트리밍` 카드를 선택합니다.
-2. 재생할 서비스를 선택하고 연결합니다.
-   - **Spotify** — Premium 계정이 필요합니다. Spotify 개발자 대시보드에서 Web Playback SDK를 사용하는 앱을 만들고, Aurora 화면에 표시된 Redirect URI를 등록합니다. 앱의 Client ID를 입력한 뒤 `연결`을 누릅니다.
-   - **YouTube** — Google Cloud에서 YouTube Data API v3를 사용 설정하고, 발급받은 API 키를 Aurora 화면에 입력해 저장합니다.
+2. Google Cloud에서 YouTube Data API v3를 사용 설정하고, 발급받은 API 키를 Aurora 화면에 입력해 저장합니다.
 3. 곡이나 아티스트를 검색하고 결과 옆의 `＋` 버튼으로 플레이리스트에 곡을 추가한 뒤 재생합니다.

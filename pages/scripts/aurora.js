@@ -1,11 +1,9 @@
 'use strict';
 
 /* =====================================================
- * Ambient Player (통합 버전)
- * - Spotify Web Playback SDK : 전곡 (Premium 필요)
+ * Ambient Player
  * - YouTube IFrame Player    : 전곡 (Data API 키 필요)
  * - 배경: 커버 팔레트 + 무드로 움직이는 canvas 앰비언트
- * 플레이리스트는 모든 모드가 공유하고, 곡마다 재생 출처(source)를 기억해요.
  * ===================================================== */
 
 const $ = id => document.getElementById(id);
@@ -13,17 +11,12 @@ const root = document.documentElement;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /* ---------- 상태 ---------- */
-const STORE = 'ambient-player-v1', SPSTORE = 'ambient-spotify-v1', KEYSTORE = 'ambient-yt-key';
-const MODES = ['spotify', 'youtube'];
-const MODE_LABEL = { spotify: 'Spotify', youtube: 'YouTube' };
-/* Spotify는 127.0.0.1, YouTube는 localhost 주소가 필요해요. 저장소는 주소별로 분리되고, 모드만 해시로 넘겨요 */
-const HOST_FOR = { spotify: '127.0.0.1', youtube: 'localhost' };
-const b64 = { enc: o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))), dec: s => JSON.parse(decodeURIComponent(escape(atob(s)))) };
+const STORE = 'ambient-player-v1', KEYSTORE = 'ambient-yt-key';
+// 이전 버전의 탭에서 보내는 플레이리스트를 가져와요.
 try {
   const m = /^#xfer=(.+)$/.exec(location.hash);
   if (m) {
-    const d = b64.dec(m[1]);
-    if (MODES.includes(d.mode)) localStorage.setItem('ambient-mode', d.mode);
+    const d = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
     if (d.key && !localStorage.getItem(KEYSTORE)) localStorage.setItem(KEYSTORE, d.key);
     // 플레이리스트는 id 기준으로 합쳐요 (없는 것만 추가, 같은 id는 없는 곡만 추가)
     const mine = JSON.parse(localStorage.getItem(STORE) || 'null') || { playlists: [], current: {} };
@@ -37,30 +30,17 @@ try {
     history.replaceState(null, '', location.pathname + location.search);
   }
 } catch {}
-function switchHost(m) {
-  const host = HOST_FOR[m];
-  if (!host || !/^https?:$/.test(location.protocol) || location.hostname === host
-      || !['localhost', '127.0.0.1'].includes(location.hostname)) return false;
-  const data = { mode: m, key: localStorage.getItem(KEYSTORE), state: JSON.parse(localStorage.getItem(STORE) || 'null') };
-  location.href = `${location.protocol}//${host}:${location.port}${location.pathname}#xfer=` + b64.enc(data);
-  return true;
-}
-let state = load(STORE) || { playlists: [{ id: uid(), name: '내 플레이리스트', tracks: [] }], current: null };
-let sp = load(SPSTORE) || {};            // { clientId, access, refresh, exp }
+const state = load(STORE) || { playlists: [], current: {} };
 let ytKey = localStorage.getItem(KEYSTORE) || '';
-let mode = localStorage.getItem('ambient-mode');
-if (!MODES.includes(mode)) mode = 'youtube';
 let queue = [], idx = -1, shuffle = false, loop = false;
 let playing = false;
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
 function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
-function saveSp() { try { localStorage.setItem(SPSTORE, JSON.stringify(sp)); } catch {} }
-// 플레이리스트는 모드(Spotify / YouTube)별로 완전히 분리돼요. state.current = { 모드: 플레이리스트 id }
-const modeLists = () => state.playlists.filter(p => p.mode === mode);
-const curList = () => state.playlists.find(p => p.id === state.current[mode]) || modeLists()[0];
-const srcOf = t => t.source || (String(t.id).startsWith('yt:') ? 'youtube' : 'spotify');
+const isYouTubeTrack = t => t.source ? t.source === 'youtube' : String(t.id).startsWith('yt:');
+const youtubeLists = () => state.playlists.filter(p => p.mode === 'youtube');
+const curList = () => youtubeLists().find(p => p.id === state.current.youtube) || youtubeLists()[0];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let toastTimer;
@@ -78,151 +58,27 @@ function toast(msg) {
   for (const op of old.playlists) {
     if (!op.tracks?.length) continue;
     op.tracks.forEach(t => t.source = 'youtube');
-    const same = state.playlists.find(p => p.name === op.name);
+    const same = state.playlists.find(p => p.name === op.name && (
+      p.mode === 'youtube' || (!p.mode && (!p.tracks.length || p.tracks.some(isYouTubeTrack)))
+    ));
     if (same) op.tracks.forEach(t => { if (!same.tracks.some(x => x.id === t.id)) same.tracks.push(t); });
-    else state.playlists.push({ id: uid(), name: op.name + ' (YouTube)', tracks: op.tracks });
+    else state.playlists.push({ id: uid(), name: op.name + ' (YouTube)', mode: 'youtube', tracks: op.tracks });
   }
   save();
 })();
 
-/** 모드별 분리: 예전에 여러 출처가 섞여 있던 플레이리스트는 출처별로 쪼개고, 모드마다 기본 플레이리스트를 보장 */
+/** 기존 목록에서 YouTube 곡을 찾고 기본 플레이리스트를 보장해요. */
 (function normalizePlaylists() {
-  const out = [];
-  state.playlists = state.playlists.filter(p => p.mode !== 'itunes');
-  state.playlists.forEach(p => { p.tracks = p.tracks.filter(t => t.source !== 'itunes'); });
   for (const p of state.playlists) {
-    if (p.mode) { out.push(p); continue; }
-    const by = {};
-    p.tracks.forEach(t => (by[srcOf(t)] ||= []).push(t));
-    const srcs = Object.keys(by);
-    srcs.forEach((s, i) => out.push({
-      id: i ? uid() : p.id, mode: s, tracks: by[s],
-      name: srcs.length > 1 ? `${p.name} (${MODE_LABEL[s]})` : p.name
-    }));
+    if (!p.mode && (!p.tracks.length || p.tracks.some(isYouTubeTrack))) p.mode = 'youtube';
   }
-  for (const m of MODES) if (!out.some(p => p.mode === m)) out.push({ id: uid(), mode: m, name: '내 플레이리스트', tracks: [] });
-  state.playlists = out;
-  const cur = typeof state.current === 'object' && state.current ? state.current : {};
-  for (const m of MODES) if (!out.some(p => p.id === cur[m] && p.mode === m)) cur[m] = out.find(p => p.mode === m).id;
-  state.current = cur;
+  if (!youtubeLists().length) state.playlists.push({ id: uid(), mode: 'youtube', name: '내 플레이리스트', tracks: [] });
+  if (typeof state.current !== 'object' || !state.current) state.current = { youtube: state.current };
+  state.current.youtube = curList().id;
   save();
 })();
 
-/* =====================================================
- * Spotify (PKCE 로그인 + Web Playback SDK)
- * ===================================================== */
-const SP_SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state';
-const redirectUri = () => location.origin + location.pathname;
-let player = null, deviceId = null, spState = null;     // spState: {pos, dur, ts, paused}
-
-const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-async function spLogin() {
-  const clientId = $('clientId').value.trim() || sp.clientId;
-  if (!clientId) return toast('Client ID를 입력해주세요.');
-  const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
-  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
-  sp.clientId = clientId; sp.verifier = verifier; saveSp();
-  location.href = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({
-    response_type: 'code', client_id: clientId, scope: SP_SCOPES, redirect_uri: redirectUri(),
-    code_challenge_method: 'S256', code_challenge: challenge
-  });
-}
-
-async function tokenRequest(params) {
-  const r = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: sp.clientId, ...params })
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error_description || d.error);
-  sp.access = d.access_token; sp.exp = Date.now() + d.expires_in * 1000;
-  if (d.refresh_token) sp.refresh = d.refresh_token;
-  delete sp.verifier; saveSp();
-}
-
-async function spToken() {
-  if (!sp.access) throw new Error('not connected');
-  if (Date.now() > sp.exp - 60000) await tokenRequest({ grant_type: 'refresh_token', refresh_token: sp.refresh });
-  return sp.access;
-}
-
-async function spApi(path, opts = {}) {
-  const r = await fetch('https://api.spotify.com/v1' + path, {
-    ...opts, headers: { Authorization: 'Bearer ' + await spToken(), 'Content-Type': 'application/json' }
-  });
-  if (!r.ok) throw new Error(`Spotify ${r.status}`);
-  const txt = await r.text();
-  return txt ? JSON.parse(txt) : null;
-}
-
-async function searchSpotify(term) {
-  const d = await spApi(`/search?type=track&limit=10&q=${encodeURIComponent(term)}`);
-  return d.tracks.items.map(t => {
-    const imgs = t.album.images;
-    return {
-      id: 'sp:' + t.id, source: 'spotify', uri: t.uri, title: t.name, artist: t.artists.map(a => a.name).join(', '),
-      artistId: t.artists[0]?.id, album: t.album.name, art: imgs[0]?.url, thumb: (imgs[1] || imgs[0])?.url
-    };
-  });
-}
-
-/** OAuth 콜백(?code=...) 처리 */
-async function handleAuthRedirect() {
-  const q = new URLSearchParams(location.search);
-  if (!q.has('code') && !q.has('error')) return;
-  history.replaceState(null, '', location.pathname);
-  if (q.has('error')) return toast('Spotify 로그인이 취소되었어요.');
-  try {
-    await tokenRequest({ grant_type: 'authorization_code', code: q.get('code'), redirect_uri: redirectUri(), code_verifier: sp.verifier });
-    mode = 'spotify'; localStorage.setItem('ambient-mode', mode);
-    toast('Spotify 연결 완료!');
-  } catch (e) { toast('Spotify 로그인 실패: ' + e.message); }
-}
-
-function initSpotifyPlayer() {
-  if (player || !sp.access) return;
-  window.onSpotifyWebPlaybackReady = () => {
-    player = new Spotify.Player({
-      name: 'Ambient Player', volume: +$('vol').value,
-      getOAuthToken: async cb => { try { cb(await spToken()); } catch { toast('Spotify 토큰 갱신 실패. 다시 연결해주세요.'); } }
-    });
-    player.addListener('ready', e => { deviceId = e.device_id; });
-    player.addListener('not_ready', () => { deviceId = null; });
-    player.addListener('player_state_changed', onSpState);
-    player.addListener('initialization_error', e => toast('이 브라우저는 지원되지 않아요 (Chrome/Edge 사용): ' + e.message));
-    player.addListener('authentication_error', () => toast('Spotify 인증 오류. 연결을 해제 후 다시 연결해주세요.'));
-    player.addListener('account_error', () => toast('Spotify Premium 계정이 필요해요.'));
-    player.addListener('playback_error', e => toast('재생 오류: ' + e.message));
-    player.connect();
-  };
-  const s = document.createElement('script');
-  s.src = 'https://sdk.scdn.co/spotify-player.js'; document.head.appendChild(s);
-}
-
-function onSpState(s) {
-  if (!s || mode !== 'spotify') return;
-  const prev = spState, now = performance.now();
-  spState = { pos: s.position, dur: s.duration, ts: now, paused: s.paused };
-  setPlaying(!s.paused);
-
-  // 곡이 자연스럽게 끝나면 SDK가 position 0으로 멈춤 → 1초 쉬고 다음 곡
-  const finished = prev && !prev.paused && s.paused && s.position === 0 && prev.pos + now - prev.ts >= prev.dur - 2000;
-  if (finished) return advance();
-
-  const cur = s.track_window.current_track;
-  const i = queue.findIndex(t => t.uri === cur.uri || t.uri === cur.linked_from?.uri);
-  if (i >= 0 && i !== idx) { idx = i; showTrack(queue[i]); }
-}
-
-function spLogout() {
-  try { player?.disconnect(); } catch {}
-  player = null; deviceId = null; sp = { clientId: sp.clientId }; saveSp();
-  queue = []; idx = -1; setPlaying(false); updateModeUI();
-  toast('Spotify 연결을 해제했어요. (새로고침하면 완전히 정리돼요)');
-}
-
-/* =====================================================
+/*/* =====================================================
  * YouTube (Data API 검색 + IFrame 플레이어)
  * ===================================================== */
 let ytp = null, ytReady = false, errStreak = 0;
@@ -299,13 +155,11 @@ window.onYouTubeIframeAPIReady = () => {
     events: {
       onReady: () => { ytReady = true; ytp.setVolume(+$('vol').value * 100); },
       onStateChange: e => {
-        if (mode !== 'youtube') return;
         if (e.data === YT.PlayerState.PLAYING) { errStreak = 0; setPlaying(true); }
         else if (e.data === YT.PlayerState.PAUSED) setPlaying(false);
         else if (e.data === YT.PlayerState.ENDED) { setPlaying(false); advance(); }
       },
       onError: e => {
-        if (mode !== 'youtube') return;
         // 2: 잘못된 ID, 5: HTML5 오류, 100: 삭제/비공개, 101·150: 임베드 금지
         console.error('YT onError', e.data, queue[idx]?.vid, location.href);
         toast(`YouTube 오류 코드 ${e.data}: ` + (e.data === 101 || e.data === 150 ? '임베드 금지' : e.data === 153 ? '출처(Referer) 없음' : '재생 불가') + ' → 건너뛰어요.');
@@ -408,15 +262,10 @@ function moodFor(track, pal) {
   return m;
 }
 
-async function fetchGenre(t) {
-  if (t.genre !== undefined || t.source !== 'spotify' || !t.artistId) return;
-  try { t.genre = (await spApi('/artists/' + t.artistId)).genres?.join(' ') || ''; } catch { t.genre = ''; }
-}
-
 const FALLBACK_HUES = [220, 280, 340, 20, 160, 190];
 
 async function applyAmbient(track) {
-  const [pal] = await Promise.all([extractPalette(track.art, srcOf(track) === 'youtube'), fetchGenre(track)]);
+  const pal = await extractPalette(track.art, true);
   const mood = moodFor(track, pal);
 
   let cols;   // [h, s, l] x 3
@@ -434,8 +283,6 @@ async function applyAmbient(track) {
   const vivid = (c, dh = 0) => `hsl(${((c[0] + dh) % 360).toFixed(0)} 100% ${clamp(c[2] * 100 + 22, 54, 64).toFixed(0)}%)`;
   root.style.setProperty('--bar1', vivid(cols[1] || cols[0], -12)); root.style.setProperty('--bar2', vivid(cols[0], 18));
   root.style.setProperty('--breath', (7 - mood.energy * 5.2).toFixed(2) + 's');
-  const g = srcOf(track) === 'youtube' ? '' : (track.genre || '').split(' ')[0];
-  $('moodChip').textContent = `MOOD · ${mood.name.toUpperCase()}` + (g ? `  ·  ${g}` : '');
 }
 
 /* =====================================================
@@ -522,7 +369,6 @@ function showTrack(t) {
   }, 350);
   $('title').textContent = t.title;
   $('artist').textContent = t.artist;
-  $('album').textContent = t.source === 'youtube' ? '' : (t.album || '');
   document.title = `${t.title} · ${t.artist}`;
   renderTracks();
 }
@@ -540,22 +386,15 @@ async function playIndex(i) {
   if (!queue.length) return;
   idx = (i + queue.length) % queue.length;
   const t = queue[idx];
-  if (mode === 'spotify') {
-    if (!deviceId) return toast('Spotify 플레이어를 준비 중이에요. 잠시 후 다시 눌러주세요.');
-    try {
-      player.activateElement?.();
-      await spApi(`/me/player/play?device_id=${deviceId}`, { method: 'PUT', body: JSON.stringify({ uris: [t.uri] }) });
-    } catch (e) { return toast('재생 실패: ' + e.message + ' (Premium 계정인지 확인해주세요)'); }
-  } else if (mode === 'youtube') {
-    if (!ytReady) return toast('YouTube 플레이어를 준비 중이에요. 잠시 후 다시 눌러주세요.');
-    ytp.loadVideoById(t.vid);
-  }
+  if (!ytReady) return toast('YouTube 플레이어를 준비 중이에요. 잠시 후 다시 눌러주세요.');
+  ytp.loadVideoById(t.vid);
+  document.body.classList.add('youtube-playing');
   showTrack(t);
 }
 
 let queueListId = null;
 function buildQueue() {
-  queue = curList().tracks.filter(t => srcOf(t) === mode);
+  queue = curList().tracks.filter(isYouTubeTrack);
   if (shuffle) queue = [...queue].sort(() => Math.random() - .5);
   queueListId = curList().id;
   return queue.length;
@@ -565,7 +404,7 @@ function buildQueue() {
 function syncQueue() {
   if (idx < 0 || !queue.length || queueListId !== curList().id) return;
   const curId = queue[idx]?.id, oldIdx = idx;
-  const inList = curList().tracks.filter(t => srcOf(t) === mode);
+  const inList = curList().tracks.filter(isYouTubeTrack);
   if (shuffle) {
     const ids = new Set(inList.map(t => t.id)), kept = queue.filter(t => ids.has(t.id)), have = new Set(kept.map(t => t.id));
     queue = kept.concat(inList.filter(t => !have.has(t.id)));
@@ -575,51 +414,15 @@ function syncQueue() {
 }
 
 function startPlaylist() {
-  if (!buildQueue()) return toast(`이 플레이리스트에 ${MODE_LABEL[mode]} 곡이 없어요.`);
+  if (!buildQueue()) return toast('이 플레이리스트에 곡이 없어요.');
   errStreak = 0;
   playIndex(0);
 }
 
 function next(auto) { auto ? advance() : playIndex(idx + 1); }
 function prev() {
-  let pos = 0;
-  if (mode === 'spotify') pos = spState ? (spState.pos + (spState.paused ? 0 : performance.now() - spState.ts)) / 1000 : 0;
-  else pos = ytReady ? ytp.getCurrentTime() : 0;
-  if (pos > 3) {
-    if (mode === 'spotify') return player?.seek(0);
-    return ytp.seekTo(0, true);
-  }
+  if (ytReady && ytp.getCurrentTime() > 3) return ytp.seekTo(0, true);
   playIndex(idx - 1);
-}
-
-/* ---------- 모드 전환 UI ---------- */
-function updateModeUI() {
-  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
-  const spOn = !!sp.access, ytOn = !!ytKey;
-  $('spPanel').hidden = !(mode === 'spotify' && !spOn);
-  $('spStatus').hidden = !(mode === 'spotify' && spOn);
-  $('ytPanel').hidden = !(mode === 'youtube' && !ytOn);
-  $('ytStatus').hidden = !(mode === 'youtube' && ytOn);
-  document.body.classList.toggle('mode-youtube', mode === 'youtube');
-  $('redirectUri').textContent = redirectUri();
-  $('clientId').value = sp.clientId || '';
-  renderPlaylists();   // 모드가 바뀌면 그 모드의 플레이리스트만 보여줘요
-}
-
-function stopAll() {
-  clearTimeout(gapTimer);
-  try { player?.pause(); } catch {}
-  try { ytReady && ytp.pauseVideo(); } catch {}
-}
-
-function setMode(m) {
-  if (switchHost(m)) return;
-  if (m === mode) return;
-  stopAll();
-  mode = m; localStorage.setItem('ambient-mode', m);
-  queue = []; idx = -1; setPlaying(false);
-  updateModeUI();
-  if (m === 'spotify') initSpotifyPlayer();
 }
 
 /* =====================================================
@@ -627,22 +430,21 @@ function setMode(m) {
  * ===================================================== */
 function renderPlaylists() {
   const sel = $('playlistSelect');
-  sel.innerHTML = modeLists().map(p => `<option value="${p.id}">${esc(p.name)} (${p.tracks.length})</option>`).join('');
+  sel.innerHTML = youtubeLists().map(p => `<option value="${esc(p.id)}">${esc(p.name)} (${p.tracks.filter(isYouTubeTrack).length})</option>`).join('');
   sel.value = curList().id;
   renderTracks();
 }
 
-const SRC_TAG = { spotify: 'Spotify', youtube: 'YouTube' };
 function renderTracks() {
   const p = curList(), ol = $('trackList');
-  $('emptyHint').style.display = p.tracks.length ? 'none' : '';
+  $('emptyHint').style.display = p.tracks.some(isYouTubeTrack) ? 'none' : '';
   const playingId = queue[idx]?.id;
-  ol.innerHTML = p.tracks.map((t, i) => `
-    <li data-i="${i}" class="${t.id === playingId ? 'active' : ''} ${srcOf(t) !== mode ? 'dim' : ''}">
+  ol.innerHTML = p.tracks.map((t, i) => isYouTubeTrack(t) ? `
+    <li data-i="${i}" class="${t.id === playingId ? 'active' : ''}">
       <img src="${t.thumb}" alt="">
-      <div class="tinfo"><b>${esc(t.title)}</b><small>${esc(t.artist)} · ${SRC_TAG[srcOf(t)]}</small></div>
+      <div class="tinfo"><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></div>
       <button class="mini" data-rm="${i}" title="제거">✕</button>
-    </li>`).join('');
+    </li>` : '').join('');
 }
 
 function renderResults(list) {
@@ -659,25 +461,25 @@ function renderResults(list) {
 /* =====================================================
  * 이벤트
  * ===================================================== */
-$('modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
-$('spConnect').onclick = spLogin;
-$('spLogout').onclick = spLogout;
+function updateYouTubeSetup() {
+  $('ytPanel').hidden = !!ytKey;
+  $('ytStatus').hidden = !ytKey;
+}
+
 $('keySave').onclick = () => {
   const k = $('apiKey').value.trim(); if (!k) return toast('API 키를 입력해주세요.');
-  ytKey = k; localStorage.setItem(KEYSTORE, k); $('apiKey').value = ''; updateModeUI(); toast('API 키를 저장했어요.');
+  ytKey = k; localStorage.setItem(KEYSTORE, k); $('apiKey').value = ''; updateYouTubeSetup(); toast('API 키를 저장했어요.');
 };
-$('keyReset').onclick = () => { ytKey = ''; localStorage.removeItem(KEYSTORE); updateModeUI(); };
+$('keyReset').onclick = () => { ytKey = ''; localStorage.removeItem(KEYSTORE); updateYouTubeSetup(); };
 
 $('searchForm').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('searchInput').value.trim();
   if (!q) return;
-  if (mode === 'spotify' && !sp.access) return toast('먼저 Spotify를 연결해주세요.');
-  if (mode === 'youtube' && !ytKey) return toast('먼저 YouTube API 키를 입력해주세요.');
+  if (!ytKey) return toast('먼저 YouTube API 키를 입력해주세요.');
   $('results').innerHTML = '<p class="hint">검색 중…</p>';
   try {
-    const search = { spotify: searchSpotify, youtube: searchYouTube }[mode];
-    renderResults(await search(q));
+    renderResults(await searchYouTube(q));
   } catch (err) { $('results').innerHTML = `<p class="hint">검색에 실패했어요. (${esc(err.message || '네트워크')})</p>`; }
 });
 
@@ -707,15 +509,13 @@ function probeEmbeddable(vid) {
 $('results').addEventListener('click', async e => {
   const b = e.target.closest('[data-add]'); if (!b || b.disabled) return;
   const ul = $('results'), t = ul._data[+b.dataset.add], p = curList();
-  if (t.source === 'youtube') {
-    b.disabled = true; b.textContent = '…';
-    if (!(await probeEmbeddable(t.vid))) {
-      toast('임베드가 금지된 곡이라 추가하지 않고 목록에서 뺐어요.');
-      b.closest('li').remove();
-      return;
-    }
-    b.disabled = false; b.textContent = '＋';
+  b.disabled = true; b.textContent = '…';
+  if (!(await probeEmbeddable(t.vid))) {
+    toast('임베드가 금지된 곡이라 추가하지 않고 목록에서 뺐어요.');
+    b.closest('li').remove();
+    return;
   }
+  b.disabled = false; b.textContent = '＋';
   if (!p.tracks.some(x => x.id === t.id)) p.tracks.push(t);
   save(); syncQueue(); renderPlaylists();
 });
@@ -725,40 +525,66 @@ $('trackList').addEventListener('click', e => {
   if (rm) { curList().tracks.splice(+rm.dataset.rm, 1); save(); syncQueue(); renderPlaylists(); return; }
   const li = e.target.closest('li'); if (!li) return;
   const t = curList().tracks[+li.dataset.i];
-  if (srcOf(t) !== mode) return toast(`이 곡은 ${MODE_LABEL[srcOf(t)]} 모드에서 재생돼요. 위에서 모드를 바꿔주세요.`);
   shuffle = false; $('shuffle').classList.remove('on');
   buildQueue(); errStreak = 0;
   playIndex(queue.findIndex(x => x.id === t.id));
 });
 
-$('playlistSelect').addEventListener('change', e => { state.current[mode] = e.target.value; save(); renderTracks(); });
+$('playlistSelect').addEventListener('change', e => { state.current.youtube = e.target.value; save(); renderTracks(); });
 $('newPlaylist').onclick = () => {
   const name = prompt('새 플레이리스트 이름'); if (!name) return;
-  const p = { id: uid(), name, mode, tracks: [] }; state.playlists.push(p); state.current[mode] = p.id; save(); renderPlaylists();
+  const p = { id: uid(), name, mode: 'youtube', tracks: [] }; state.playlists.push(p); state.current.youtube = p.id; save(); renderPlaylists();
 };
+
+const playlistRenameForm = $('playlistRenameForm');
+const playlistName = $('playlistName');
+function closePlaylistRename() {
+  playlistRenameForm.hidden = true;
+  $('playlistActions').hidden = false;
+  $('renamePlaylist').focus();
+}
+
 $('renamePlaylist').onclick = () => {
-  const name = prompt('이름 변경', curList().name); if (!name) return;
-  curList().name = name; save(); renderPlaylists();
+  playlistName.value = curList().name;
+  playlistName.setCustomValidity('');
+  $('playlistActions').hidden = true;
+  playlistRenameForm.hidden = false;
+  playlistName.focus();
+  playlistName.select();
 };
+$('cancelPlaylistRename').onclick = closePlaylistRename;
+playlistName.addEventListener('input', () => playlistName.setCustomValidity(''));
+playlistRenameForm.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || e.isComposing) return;
+  e.preventDefault();
+  closePlaylistRename();
+});
+playlistRenameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const name = playlistName.value.trim();
+  if (!name) {
+    playlistName.setCustomValidity('플레이리스트 이름을 입력해주세요.');
+    playlistName.reportValidity();
+    return;
+  }
+  curList().name = name;
+  save();
+  renderPlaylists();
+  closePlaylistRename();
+});
+
 $('deletePlaylist').onclick = () => {
-  if (modeLists().length < 2) return alert('이 모드의 마지막 플레이리스트는 삭제할 수 없어요.');
+  if (youtubeLists().length < 2) return alert('마지막 플레이리스트는 삭제할 수 없어요.');
   if (!confirm(`"${curList().name}" 삭제할까요?`)) return;
   const id = curList().id;
   state.playlists = state.playlists.filter(p => p.id !== id);
-  state.current[mode] = modeLists()[0].id; save(); renderPlaylists();
+  state.current.youtube = youtubeLists()[0].id; save(); renderPlaylists();
 };
 
 $('play').onclick = () => {
-  if (mode === 'spotify') {
-    if (!sp.access) return toast('먼저 Spotify를 연결해주세요.');
-    player?.activateElement?.();
-    return idx < 0 ? startPlaylist() : player.togglePlay();
-  }
-  if (mode === 'youtube') {
-    if (idx < 0) return startPlaylist();
-    if (!ytReady) return;
-    return playing ? ytp.pauseVideo() : ytp.playVideo();
-  }
+  if (idx < 0) return startPlaylist();
+  if (!ytReady) return;
+  return playing ? ytp.pauseVideo() : ytp.playVideo();
 };
 $('next').onclick = () => idx < 0 ? startPlaylist() : next();
 $('prev').onclick = () => idx >= 0 && prev();
@@ -766,7 +592,7 @@ $('shuffle').onclick = e => { shuffle = !shuffle; e.currentTarget.classList.togg
 $('loop').onclick = e => { loop = !loop; e.currentTarget.classList.toggle('on', loop); };
 function setVolume(v) {
   v = clamp(v, 0, 1);
-  player?.setVolume(v); if (ytReady) ytp.setVolume(v * 100);
+  if (ytReady) ytp.setVolume(v * 100);
   $('vol').value = v; $('vol').style.setProperty('--v', v * 100 + '%');
   $('volWave').style.display = v === 0 ? 'none' : '';
 }
@@ -788,16 +614,13 @@ function setProgress(pos, dur) {
   $('seek').style.setProperty('--p', ratio * 100 + '%');
   $('cur').textContent = fmt(pos); $('dur').textContent = fmt(dur);
 }
-setInterval(() => {   // Spotify는 상태 이벤트 사이를 시간으로 보간, YouTube는 플레이어에서 직접 읽음
-  if (mode === 'spotify' && spState) {
-    const pos = spState.paused ? spState.pos : Math.min(spState.dur, spState.pos + performance.now() - spState.ts);
-    setProgress(pos / 1000, spState.dur / 1000);
-  } else if (mode === 'youtube' && ytReady && idx >= 0) {
+setInterval(() => {
+  if (ytReady && idx >= 0) {
     setProgress(ytp.getCurrentTime() || 0, ytp.getDuration() || 0);
   }
 }, 250);
 
-const seekDur = () => mode === 'spotify' ? (spState?.dur || 0) / 1000 : mode === 'youtube' ? (ytReady ? ytp.getDuration() || 0 : 0) : 0;
+const seekDur = () => ytReady ? ytp.getDuration() || 0 : 0;
 $('seek').addEventListener('input', e => { seeking = true; $('cur').textContent = fmt(e.target.value / 1000 * seekDur()); e.target.style.setProperty('--p', e.target.value / 10 + '%'); });
 $('seekWrap').addEventListener('pointermove', e => {
   const r = $('seekWrap').getBoundingClientRect(), x = clamp(e.clientX - r.left, 0, r.width);
@@ -805,12 +628,13 @@ $('seekWrap').addEventListener('pointermove', e => {
 });
 $('seek').addEventListener('change', e => {
   const sec = e.target.value / 1000 * seekDur();
-  if (mode === 'spotify') { player?.seek(sec * 1000); if (spState) { spState.pos = sec * 1000; spState.ts = performance.now(); } }
-  else if (mode === 'youtube') { if (ytReady) ytp.seekTo(sec, true); }
+  if (ytReady) ytp.seekTo(sec, true);
   seeking = false;
 });
 
 let barTimer, btnTimer;
+const fullscreenButton = $('immersive');
+
 function immersiveWake(e) {
   const b = document.body;
   if (!b.classList.contains('immersive')) return;
@@ -820,27 +644,46 @@ function immersiveWake(e) {
   }
 }
 ['mousemove', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, immersiveWake, { passive: true }));
-const toggleImmersive = () => {
-  document.body.classList.toggle('immersive');
-  document.body.classList.remove('bar-show', 'btn-show'); clearTimeout(barTimer); clearTimeout(btnTimer);
-};
-$('immersive').onclick = toggleImmersive;
+
+document.addEventListener('fullscreenchange', () => {
+  const active = document.fullscreenElement === root;
+  const label = active ? '전체화면 종료' : '전체화면';
+  clearTimeout(barTimer);
+  clearTimeout(btnTimer);
+  document.body.classList.toggle('immersive', active);
+  document.body.classList.remove('bar-show', 'btn-show');
+  fullscreenButton.setAttribute('aria-label', label);
+  fullscreenButton.title = active ? `${label} (Esc 또는 F)` : `${label} (F)`;
+});
+
+async function toggleImmersive() {
+  try {
+    if (document.fullscreenElement === root) {
+      await document.exitFullscreen();
+    } else {
+      await root.requestFullscreen();
+    }
+  } catch {
+    toast('이 브라우저에서 전체화면을 전환할 수 없습니다.');
+  }
+}
+
+fullscreenButton.onclick = toggleImmersive;
 document.addEventListener('keydown', e => {
+  if (playlistRenameForm.contains(e.target)) return;
   if (['INPUT', 'SELECT'].includes(e.target.tagName) && e.target.type !== 'range') return;
   if (e.code === 'Space') { e.preventDefault(); $('play').click(); }
-  else if (e.key === 'f' || e.key === 'F') toggleImmersive();
+  else if ((e.key === 'f' || e.key === 'F') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) toggleImmersive();
   else if (e.key === 'ArrowRight') $('next').click();
   else if (e.key === 'ArrowLeft') $('prev').click();
 });
 
 /* ---------- 초기화 ---------- */
-(async function init() {
+(function init() {
   $('cover').style.display = $('glow').style.display = 'none';
   $('play').innerHTML = ICON_PLAY;
-  await handleAuthRedirect();
   renderPlaylists();
-  updateModeUI();
-  if (mode === 'spotify') initSpotifyPlayer();
-  if (location.protocol === 'file:') toast('start.bat으로 연 http://127.0.0.1:5500 주소에서 열어야 Spotify/YouTube가 동작해요.');
+  updateYouTubeSetup();
+  if (location.protocol === 'file:') toast('로컬 웹 서버에서 열어야 YouTube 재생이 동작해요.');
   loadYouTubeApi();
 })();

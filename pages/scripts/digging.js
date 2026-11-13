@@ -122,9 +122,39 @@ const searchInput = document.querySelector(".input_box");
 const playlistBox = document.querySelector(".playlist");
 const playlistSelect = document.getElementById("auroraPlaylistSelect");
 const sections = document.querySelectorAll(".recommendation_section");
-const similarList = sections[0].querySelector("div");
-const differentList = sections[1].querySelector("div");
+const similarList = sections[0].querySelector(".rec_list");
+const differentList = sections[1].querySelector(".rec_list");
 const searchArea = document.querySelector(".discovery-search");
+const toastBox = document.getElementById("toast");
+
+// 페이지 안 대화창 (플레이리스트 만들기·이름 변경·삭제 확인)
+const dg = {
+    dialog: document.getElementById("dgDialog"),
+    form: document.getElementById("dgDialogForm"),
+    title: document.getElementById("dgDialogTitle"),
+    message: document.getElementById("dgDialogMessage"),
+    field: document.getElementById("dgDialogField"),
+    label: document.getElementById("dgDialogLabel"),
+    input: document.getElementById("dgDialogInput"),
+    error: document.getElementById("dgDialogError"),
+    cancel: document.getElementById("dgDialogCancel"),
+    ok: document.getElementById("dgDialogOk"),
+};
+
+// 곡 정보 대화창
+const sd = {
+    dialog: document.getElementById("songDialog"),
+    close: document.getElementById("songDialogClose"),
+    cover: document.getElementById("songDialogCover"),
+    title: document.getElementById("songDialogTitle"),
+    artist: document.getElementById("songDialogArtist"),
+    album: document.getElementById("songDialogAlbum"),
+    tags: document.getElementById("songDialogTags"),
+    stats: document.getElementById("songDialogStats"),
+    summary: document.getElementById("songDialogSummary"),
+    links: document.getElementById("songDialogLinks"),
+    actions: document.getElementById("songDialogActions"),
+};
 
 const searchResults = document.createElement("div");
 searchResults.className = "search_results box";
@@ -260,6 +290,105 @@ function appendAddControl(row, song) {
     else row.appendChild(makeButton("+", "Aurora 플레이리스트에 담기", () => addToPlaylist(song)));
 }
 
+// 앨범 자켓 이미지. 이미지가 없거나 깨지면 ♪ 자리 표시로 바꾼다.
+function makeCover(url, className) {
+    const holder = document.createElement("span");
+    holder.className = className;
+    const fallback = () => {
+        holder.innerHTML = "";
+        holder.classList.add("empty");
+        holder.textContent = "♪";
+    };
+    if (!url) {
+        fallback();
+        return holder;
+    }
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "";
+    img.loading = "lazy";
+    img.referrerPolicy = "no-referrer";
+    img.addEventListener("error", fallback, { once: true });
+    holder.appendChild(img);
+    return holder;
+}
+
+// ------------------------------------------------------------
+// 4-1. 알림·대화창 (브라우저 alert/prompt/confirm 대신 페이지 안에서 띄운다)
+// ------------------------------------------------------------
+let toastTimer = null;
+function notify(message) {
+    // 대화창이 열려 있으면 그 위(top layer)에 보이도록 대화창 안으로 옮긴다.
+    const host = [sd.dialog, dg.dialog].find(dialog => dialog.open) || document.body;
+    if (toastBox.parentElement !== host) host.appendChild(toastBox);
+    toastBox.textContent = message;
+    toastBox.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastBox.classList.remove("show"), 4500);
+}
+
+// 입력(input)이 있으면 입력한 문자열(취소하면 null), 없으면 true/false를 돌려준다.
+function openDialog({ title, message = "", input = null, confirmText = "확인", danger = false }) {
+    const cancelValue = input ? null : false;
+    if (dg.dialog.open) return Promise.resolve(cancelValue);
+
+    dg.title.textContent = title;
+    dg.message.textContent = message;
+    dg.message.hidden = message === "";
+    dg.field.hidden = !input;
+    dg.error.hidden = true;
+    dg.ok.textContent = confirmText;
+    dg.ok.classList.toggle("danger", danger);
+    if (input) {
+        dg.label.textContent = input.label;
+        dg.input.value = input.value || "";
+        dg.input.placeholder = input.placeholder || "";
+    }
+
+    return new Promise(resolve => {
+        const finish = value => {
+            dg.form.removeEventListener("submit", onSubmit);
+            dg.cancel.removeEventListener("click", onCancel);
+            dg.dialog.removeEventListener("cancel", onEscape);
+            dg.dialog.removeEventListener("click", onBackdrop);
+            dg.dialog.close();
+            resolve(value);
+        };
+        const onSubmit = event => {
+            event.preventDefault();
+            if (!input) return finish(true);
+            const value = dg.input.value.trim();
+            if (value === "") {
+                dg.error.textContent = "이름을 입력해주세요.";
+                dg.error.hidden = false;
+                dg.input.focus();
+                return;
+            }
+            finish(value);
+        };
+        const onCancel = () => finish(cancelValue);
+        const onEscape = event => {
+            event.preventDefault();
+            finish(cancelValue);
+        };
+        // 패널 바깥(어두운 배경)을 누르면 닫는다.
+        const onBackdrop = event => {
+            if (event.target === dg.dialog) finish(cancelValue);
+        };
+        dg.form.addEventListener("submit", onSubmit);
+        dg.cancel.addEventListener("click", onCancel);
+        dg.dialog.addEventListener("cancel", onEscape);
+        dg.dialog.addEventListener("click", onBackdrop);
+        dg.dialog.showModal();
+        if (input) {
+            dg.input.focus();
+            dg.input.select();
+        } else {
+            dg.ok.focus();
+        }
+    });
+}
+
 // ------------------------------------------------------------
 // 5. 저장 - Aurora 계정 플레이리스트 공유
 // ------------------------------------------------------------
@@ -306,6 +435,9 @@ function updateAurora(change) {
 function trackToSong(track) {
     const song = makeSong(cleanTitle(track.title), track.artist);
     song.trackId = track.id;
+    song.thumb = track.thumb || track.art || "";
+    song.art = track.art || track.thumb || "";
+    song.vid = track.vid || "";
     song.ytTags = youtubeTagsOf(track);
     song.genres = mergeGenres(tagCache[song.id] || [], genresFromYouTubeTags(song.ytTags, song.artist));
     return song;
@@ -548,12 +680,12 @@ async function findYouTubeTrack(song) {
 
 async function addToPlaylist(song) {
     if (isInPlaylist(song.id)) {
-        alert("이미 플레이리스트에 있는 곡이에요.");
+        notify("이미 플레이리스트에 있는 곡이에요.");
         return;
     }
     if (pendingAdds.has(song.id)) return;
     if (!getYouTubeKey()) {
-        alert("Aurora에서 YouTube API 키를 먼저 저장해주세요. 담은 곡은 Aurora에서 YouTube로 재생돼요.");
+        notify("Aurora에서 YouTube API 키를 먼저 저장해주세요. 담은 곡은 Aurora에서 YouTube로 재생돼요.");
         return;
     }
 
@@ -562,9 +694,9 @@ async function addToPlaylist(song) {
     let track = null;
     try {
         track = await findYouTubeTrack(song);
-        if (!track) alert(`YouTube에서 재생 가능한 "${song.title}" 영상을 찾지 못했어요.`);
+        if (!track) notify(`YouTube에서 재생 가능한 "${song.title}" 영상을 찾지 못했어요.`);
     } catch (error) {
-        alert("YouTube 검색 실패: " + error.message);
+        notify("YouTube 검색 실패: " + error.message);
     }
     pendingAdds.delete(song.id);
 
@@ -599,6 +731,226 @@ async function openInAurora() {
     location.href = "aurora.html";
 }
 
+// Aurora와 같은 플레이리스트 관리: 새로 만들기 / 이름 변경 / 삭제 (YouTube 모드 목록)
+async function createPlaylist() {
+    const name = await openDialog({
+        title: "새 플레이리스트",
+        input: { label: "플레이리스트 이름", placeholder: "예) 출근길 재즈" },
+        confirmText: "만들기",
+    });
+    if (!name) return;
+    updateAurora(state => {
+        const list = { id: uid(), name, mode: "youtube", tracks: [] };
+        state.playlists.push(list);
+        state.current.youtube = list.id;
+    });
+    notify(`"${name}" 플레이리스트를 만들었어요.`);
+    syncFromAurora();
+}
+
+async function renamePlaylist() {
+    const list = currentAuroraList();
+    const name = await openDialog({
+        title: "이름 변경",
+        input: { label: "새 이름", value: list.name },
+        confirmText: "변경",
+    });
+    if (!name || name === list.name) return;
+    updateAurora(state => {
+        const target = state.playlists.find(p => p.id === list.id);
+        if (target) target.name = name;
+    });
+    renderPlaylist();
+}
+
+async function deletePlaylist() {
+    if (youtubeLists().length < 2) {
+        notify("마지막 플레이리스트는 삭제할 수 없어요.");
+        return;
+    }
+    const list = currentAuroraList();
+    const ok = await openDialog({
+        title: "플레이리스트 삭제",
+        message: `"${list.name}" (${list.tracks.length}곡)을 삭제할까요?\nAurora에서도 함께 삭제돼요.`,
+        confirmText: "삭제",
+        danger: true,
+    });
+    if (!ok) return;
+    updateAurora(state => {
+        state.playlists = state.playlists.filter(p => p.id !== list.id);
+        state.current.youtube = youtubeLists(state)[0].id;
+    });
+    notify(`"${list.name}" 플레이리스트를 삭제했어요.`);
+    syncFromAurora();
+}
+
+// ------------------------------------------------------------
+// 8-0. 곡 정보 (Last.fm track.getInfo) - 앨범 자켓, 앨범명, 청취 수, 소개
+// ------------------------------------------------------------
+const LASTFM_PLACEHOLDER = "2a96cbd8b46e442fc41c2b86b821562f";   // Last.fm 기본 별 이미지
+const infoCache = new Map();        // 곡 id -> Promise<정보>
+
+function lastfmImage(images) {
+    const list = toArray(images);
+    for (const size of ["extralarge", "large", "medium", "small"]) {
+        const url = (list.find(image => image.size === size) || {})["#text"];
+        if (url && !url.includes(LASTFM_PLACEHOLDER)) return url;
+    }
+    return "";
+}
+
+// 소개글의 HTML(링크 등)은 글자만 남긴다. DOMParser는 스크립트를 실행하지 않는다.
+function plainText(html) {
+    const text = new DOMParser().parseFromString(String(html || ""), "text/html").body.textContent || "";
+    return text.replace(/\s*Read more on Last\.fm\.?\s*$/i, "").trim();
+}
+
+function getSongInfo(song) {
+    if (!infoCache.has(song.id)) {
+        const pending = lastfm("track.getInfo", { artist: song.artist, track: song.title, autocorrect: 1 })
+            .then(data => {
+                const t = data.track || {};
+                return {
+                    art: lastfmImage(t.album && t.album.image),
+                    album: (t.album && t.album.title) || "",
+                    listeners: Number(t.listeners) || 0,
+                    playcount: Number(t.playcount) || 0,
+                    duration: Math.round((Number(t.duration) || 0) / 1000),
+                    tags: cleanTags(toArray(t.toptags && t.toptags.tag).map(tag => ({ name: tag.name, count: 100 })), song.artist),
+                    summary: plainText(t.wiki && t.wiki.summary),
+                    url: t.url || "",
+                };
+            })
+            .catch(error => {
+                infoCache.delete(song.id);      // 실패하면 다음에 다시 시도
+                throw error;
+            });
+        infoCache.set(song.id, pending);
+    }
+    return infoCache.get(song.id);
+}
+
+// 추천 카드에 앨범 자켓 채우기. 자켓을 찾으면 곡 객체에 기억해서 다시 그릴 때 바로 쓴다.
+async function loadCardCover(song, card) {
+    if (song.coverLoaded) return;
+    try {
+        const info = await getSongInfo(song);
+        song.coverLoaded = true;
+        if (info.album) song.album = info.album;
+        if (!info.art || info.art === song.art) return;
+        song.art = info.art;
+        if (!card.isConnected) return;
+        const old = card.querySelector(".rec_cover_img");
+        if (old) old.replaceWith(makeCover(song.art, "rec_cover_img"));
+    } catch (error) {
+        console.warn("곡 정보 조회 실패:", error.message);
+    }
+}
+
+const formatNumber = n => n.toLocaleString("ko-KR");
+const formatTime = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+let openSong = null;            // 곡 정보 창에 떠 있는 곡
+let songInfoToken = 0;
+
+function renderSongActions() {
+    const song = openSong;
+    sd.actions.innerHTML = "";
+    if (!song) return;
+    if (isInPlaylist(song.id)) {
+        sd.actions.appendChild(makeLabel("플레이리스트에 담김 ✓"));
+        sd.actions.appendChild(makeButton("▶ Aurora에서 재생", "이 플레이리스트를 Aurora에서 재생", openInAurora));
+    } else if (pendingAdds.has(song.id)) {
+        sd.actions.appendChild(makeLabel("YouTube에서 찾는 중…"));
+    } else {
+        const add = makeButton("＋ 플레이리스트에 담기", `"${currentAuroraList().name}"에 담기`, () => addToPlaylist(song));
+        add.classList.add("dg_primary");
+        sd.actions.appendChild(add);
+    }
+}
+
+function fillSongDialog(song, info) {
+    const art = (info && info.art) || song.art || song.thumb || "";
+    sd.cover.innerHTML = "";
+    sd.cover.appendChild(makeCover(art, "song_cover_img"));
+    sd.title.textContent = song.title;
+    sd.artist.textContent = song.artist;
+    const album = (info && info.album) || song.album || "";
+    sd.album.textContent = album ? `앨범 · ${album}` : "";
+    sd.album.hidden = album === "";
+
+    sd.tags.innerHTML = "";
+    mergeGenres(song.genres, info ? info.tags : []).forEach(genre => {
+        const tag = document.createElement("span");
+        tag.className = "genre_tag";
+        tag.textContent = genre;
+        sd.tags.appendChild(tag);
+    });
+
+    sd.stats.innerHTML = "";
+    const stats = info ? [
+        ["청취자", info.listeners ? formatNumber(info.listeners) + "명" : ""],
+        ["재생 수", info.playcount ? formatNumber(info.playcount) + "회" : ""],
+        ["길이", info.duration ? formatTime(info.duration) : ""],
+    ].filter(([, value]) => value) : [];
+    stats.forEach(([name, value]) => {
+        const dt = document.createElement("dt");
+        dt.textContent = name;
+        const dd = document.createElement("dd");
+        dd.textContent = value;
+        sd.stats.append(dt, dd);
+    });
+    sd.stats.hidden = stats.length === 0;
+
+    sd.links.innerHTML = "";
+    const addLink = (text, href) => {
+        const a = document.createElement("a");
+        a.href = href;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = text;
+        sd.links.appendChild(a);
+    };
+    if (info && info.url) addLink("Last.fm에서 보기 ↗", info.url);
+    addLink("YouTube에서 보기 ↗", song.vid
+        ? "https://www.youtube.com/watch?v=" + encodeURIComponent(song.vid)
+        : "https://www.youtube.com/results?search_query=" + encodeURIComponent(`${song.artist} ${song.title}`));
+
+    renderSongActions();
+}
+
+async function showSongInfo(song) {
+    const token = ++songInfoToken;
+    openSong = song;
+    fillSongDialog(song, null);
+    sd.summary.textContent = getLastfmKey() ? "곡 정보를 불러오는 중…" : "";
+    sd.summary.hidden = !getLastfmKey();
+    if (!sd.dialog.open) sd.dialog.showModal();
+    sd.close.focus();
+    if (!getLastfmKey()) return;
+    try {
+        const info = await getSongInfo(song);
+        if (token !== songInfoToken || !sd.dialog.open) return;
+        fillSongDialog(song, info);
+        sd.summary.textContent = info.summary || "Last.fm에 등록된 곡 소개가 없어요.";
+        sd.summary.hidden = false;
+    } catch (error) {
+        if (token !== songInfoToken || !sd.dialog.open) return;
+        sd.summary.textContent = "곡 정보를 불러오지 못했어요. (" + error.message + ")";
+    }
+}
+
+function closeSongInfo() {
+    if (sd.dialog.open) sd.dialog.close();
+}
+sd.dialog.addEventListener("close", () => {
+    openSong = null;
+    songInfoToken++;
+});
+sd.close.addEventListener("click", closeSongInfo);
+sd.dialog.addEventListener("click", event => {
+    if (event.target === sd.dialog) closeSongInfo();
+});
+
 // ------------------------------------------------------------
 // 8-1. 예전 디깅 목록 -> Aurora로 옮기기
 // ------------------------------------------------------------
@@ -630,11 +982,16 @@ async function migrateLegacySongs() {
     const songs = legacyDiggingSongs();
     if (songs.length === 0 || migrateProgress) return;
     if (!getYouTubeKey()) {
-        alert("Aurora에서 YouTube API 키를 먼저 저장해주세요. 옮긴 곡은 Aurora에서 YouTube로 재생돼요.");
+        notify("Aurora에서 YouTube API 키를 먼저 저장해주세요. 옮긴 곡은 Aurora에서 YouTube로 재생돼요.");
         return;
     }
-    if (!confirm(`예전 디깅 목록의 ${songs.length}곡을 YouTube에서 찾아 현재 Aurora 플레이리스트에 담을까요?\n`
-        + "(곡마다 YouTube API 할당량을 약 100씩 사용해요.)")) return;
+    const ok = await openDialog({
+        title: "예전 디깅 곡 옮기기",
+        message: `예전 디깅 목록의 ${songs.length}곡을 YouTube에서 찾아 "${currentAuroraList().name}"에 담을까요?\n`
+            + "곡마다 YouTube API 할당량을 약 100씩 사용해요.",
+        confirmText: "옮기기",
+    });
+    if (!ok) return;
 
     const tracks = [];
     const movedIds = [];
@@ -655,7 +1012,7 @@ async function migrateLegacySongs() {
         } catch (error) {
             failed.push(song);
             if (/quota/i.test(error.message)) {
-                alert("YouTube API 오늘 할당량을 다 써서 멈췄어요. 남은 곡은 내일 다시 옮길 수 있어요.");
+                notify("YouTube API 오늘 할당량을 다 써서 멈췄어요. 남은 곡은 내일 다시 옮길 수 있어요.");
                 break;
             }
         }
@@ -678,7 +1035,7 @@ async function migrateLegacySongs() {
     const failText = failed.length > 0
         ? `\n찾지 못한 곡 ${failed.length}개: ${failed.slice(0, 5).map(s => `${s.title} - ${s.artist}`).join(", ")}${failed.length > 5 ? " 등" : ""}`
         : "";
-    alert(`${tracks.length}곡을 Aurora 플레이리스트로 옮겼어요.${failText}`);
+    notify(`${tracks.length}곡을 Aurora 플레이리스트로 옮겼어요.${failText}`);
     syncFromAurora();
 }
 
@@ -718,9 +1075,11 @@ async function fetchTagTracks(tag) {
         data = await lastfm("tag.getTopTracks", { tag, limit: 30, page: 1 });
         tracks = toArray(data.tracks && data.tracks.track);
     }
-    return tracks.map(t =>
-        makeSong(t.name, t.artist && t.artist.name ? t.artist.name : t.artist, [tag])
-    );
+    return tracks.map(t => {
+        const song = makeSong(t.name, t.artist && t.artist.name ? t.artist.name : t.artist, [tag]);
+        song.art = lastfmImage(t.image);    // 대부분 비어 있어서 카드를 그린 뒤 track.getInfo로 채운다
+        return song;
+    });
 }
 
 // 여러 태그에서 곡을 모아 섞은 뒤 RECOMMEND_COUNT개만 고른다.
@@ -778,9 +1137,10 @@ function renderPlaylist() {
     }
 
     if (playlist.length === 0) {
-        playlistBody.appendChild(makeMessage(
-            "Aurora(YouTube 모드)에서 노래를 담거나, 검색·추천 곡의 + 버튼으로 담아보세요."
-        ));
+        const hint = document.createElement("p");
+        hint.className = "pl_hint";
+        hint.textContent = "검색하거나 추천 곡의 + 버튼으로 노래를 담아보세요.";
+        playlistBody.appendChild(hint);
         return;
     }
 
@@ -789,11 +1149,68 @@ function renderPlaylist() {
     controls.appendChild(makeButton("▶ Aurora에서 재생", "이 플레이리스트를 Aurora에서 재생", openInAurora));
     playlistBody.appendChild(controls);
 
+    // Aurora 트랙 목록과 같은 모양: 썸네일 + 제목(굵게) / 가수 · 장르(작게) + ✕
+    const ol = document.createElement("ol");
+    ol.className = "pl_tracks";
     playlist.forEach(song => {
-        const row = makeSongRow(song, 3);
-        row.appendChild(makeButton("✕", "플레이리스트에서 빼기", () => removeFromPlaylist(song)));
-        playlistBody.appendChild(row);
+        const li = document.createElement("li");
+        li.className = "pl_track";
+
+        const open = document.createElement("button");
+        open.type = "button";
+        open.className = "pl_open";
+        open.title = "곡 정보 보기";
+        open.appendChild(makeCover(song.thumb, "pl_thumb"));
+        const info = document.createElement("span");
+        info.className = "tinfo";
+        const title = document.createElement("b");
+        title.textContent = song.title;
+        const meta = document.createElement("small");
+        meta.textContent = [song.artist, song.genres.slice(0, 3).join(", ")].filter(Boolean).join(" · ");
+        info.append(title, meta);
+        open.appendChild(info);
+        open.addEventListener("click", () => showSongInfo(song));
+
+        const remove = makeButton("✕", "플레이리스트에서 빼기", () => removeFromPlaylist(song));
+        remove.className = "mini";
+        remove.setAttribute("aria-label", `${song.title} 플레이리스트에서 빼기`);
+        li.append(open, remove);
+        ol.appendChild(li);
     });
+    playlistBody.appendChild(ol);
+}
+
+// 추천 곡 카드: 앨범 자켓 + 제목 / 가수. 자켓을 누르면 곡 정보 창을 연다.
+function makeSongCard(song) {
+    const card = document.createElement("article");
+    card.className = "rec_card";
+
+    const cover = document.createElement("button");
+    cover.type = "button";
+    cover.className = "rec_cover";
+    cover.title = "곡 정보 보기";
+    cover.setAttribute("aria-label", `${song.title} - ${song.artist} 곡 정보 보기`);
+    cover.appendChild(makeCover(song.art, "rec_cover_img"));
+    cover.addEventListener("click", () => showSongInfo(song));
+    card.appendChild(cover);
+
+    const meta = document.createElement("div");
+    meta.className = "rec_meta";
+    const text = document.createElement("div");
+    text.className = "tinfo";
+    const title = document.createElement("b");
+    title.textContent = song.title;
+    title.title = song.title;
+    const artist = document.createElement("small");
+    artist.textContent = song.artist;
+    artist.title = song.artist;
+    text.append(title, artist);
+    meta.appendChild(text);
+    appendAddControl(meta, song);
+    card.appendChild(meta);
+
+    loadCardCover(song, card);
+    return card;
 }
 
 function fillSongList(container, list, emptyText) {
@@ -803,15 +1220,15 @@ function fillSongList(container, list, emptyText) {
         container.appendChild(makeMessage(emptyText));
         return;
     }
-    list.forEach(song => {
-        const row = makeSongRow(song);
-        appendAddControl(row, song);
-        container.appendChild(row);
-    });
+    const grid = document.createElement("div");
+    grid.className = "rec_grid";
+    list.forEach(song => grid.appendChild(makeSongCard(song)));
+    container.appendChild(grid);
 }
 
 // 담기 상태(+ / 찾는 중 / 담김)만 바뀌었을 때 네트워크 호출 없이 다시 그린다.
 function rerenderAddButtons() {
+    renderSongActions();
     renderSearchResults();
     [similarList, differentList].forEach(container => {
         if (Array.isArray(container._songs) && container._songs.length > 0) {
@@ -897,6 +1314,7 @@ async function syncFromAurora() {
     const token = ++analyzeToken;
     refreshPlaylist();
     renderPlaylist();
+    renderSongActions();
     renderSearchResults();
 
     // 외부 API 장르를 아직 모르는 곡만 차례로 조회 (MusicBrainz 속도 제한 때문에 순서대로)
@@ -929,6 +1347,9 @@ playlistSelect.addEventListener("change", () => {
     updateAurora(state => { state.current.youtube = playlistSelect.value; });
     syncFromAurora();
 });
+document.getElementById("newPlaylist").addEventListener("click", createPlaylist);
+document.getElementById("renamePlaylist").addEventListener("click", renamePlaylist);
+document.getElementById("deletePlaylist").addEventListener("click", deletePlaylist);
 
 // Aurora가 다른 탭에 열려 있어도 플레이리스트 변경을 바로 반영
 window.addEventListener("storage", event => {
@@ -1055,13 +1476,13 @@ document.getElementById("lfmKeyForm").addEventListener("submit", event => {
     event.preventDefault();
     const key = lfmKeyInput.value.trim();
     if (!/^[0-9a-f]{32}$/i.test(key)) {
-        alert("Last.fm API key는 영문/숫자 32자리예요. 'API key' 값을 복사했는지 확인해주세요. (Shared secret 아님)");
+        notify("Last.fm API key는 영문/숫자 32자리예요. 'API key' 값을 복사했는지 확인해주세요. (Shared secret 아님)");
         return;
     }
     try {
         localStorage.setItem(LASTFM_KEY_STORE, key);
     } catch (error) {
-        alert("브라우저 저장소를 사용할 수 없어 키를 저장하지 못했어요. (시크릿 모드·저장소 차단 확인)");
+        notify("브라우저 저장소를 사용할 수 없어 키를 저장하지 못했어요. (시크릿 모드·저장소 차단 확인)");
         return;
     }
     lfmKeyInput.value = "";

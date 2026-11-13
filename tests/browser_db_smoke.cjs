@@ -79,21 +79,39 @@ let browser;
   await page.getByRole('button',{name:'이 기기에서 열기'}).click();
   assert.equal((await downloading).suggestedFilename(),'local.pdf');
   // 디깅은 Aurora 플레이리스트를 함께 쓰고, YouTube 태그(jazz)에서 장르를 뽑는다.
+  // 디깅 화면은 브라우저 alert/prompt/confirm 창을 띄우지 않는다.
+  const nativeDialogs = [];
+  const onNativeDialog = dialog => { nativeDialogs.push(dialog.message()); dialog.dismiss(); };
+  page.on('dialog', onNativeDialog);
   await open('digging.html');
   await page.locator('#auroraPlaylistSelect option', {hasText:'Saved list'}).waitFor({state:'attached'});
-  await page.locator('.playlist_body .song_row', {hasText:'Saved'}).getByText('jazz',{exact:true}).waitFor();
+  await page.locator('.pl_track', {hasText:'Saved'}).locator('small', {hasText:'jazz'}).waitFor();
   // 예전 디깅 목록 중 Aurora에 없는 곡(Imported)만 옮기기 대상으로 보인다. (Saved는 이미 Aurora에 있음)
   await page.evaluate(() => localStorage.setItem('musicdig_playlist_v2',JSON.stringify([{title:'Imported',artist:'Artist',genres:['jazz']}])));
   await page.reload();
   await page.getByRole('button',{name:'예전 디깅 곡 1곡 Aurora로 옮기기'}).waitFor();
   // ✕는 Aurora 계정 목록에서 곡을 뺀다.
-  await page.locator('.playlist_body .song_row', {hasText:'Saved'}).getByRole('button',{name:'✕'}).click();
+  await page.locator('.pl_track', {hasText:'Saved'}).locator('.mini').click();
   await page.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem('__test_cloud'))['users/user-a/appData/aurora'].payload).playlists[0].tracks.length===0);
+  // 플레이리스트 만들기·이름 변경은 페이지 안 대화창으로 하고 Aurora 계정 목록에 저장한다.
+  await page.locator('#newPlaylist').click();
+  await page.locator('#dgDialog').waitFor();
+  await page.locator('#dgDialogInput').fill('Dig list');
+  await page.locator('#dgDialogOk').click();
+  await page.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem('__test_cloud'))['users/user-a/appData/aurora'].payload).playlists.some(item=>item.name==='Dig list'&&item.mode==='youtube'));
+  await page.locator('#renamePlaylist').click();
+  await page.locator('#dgDialogInput').fill('Dig list 2');
+  await page.locator('#dgDialogInput').press('Enter');
+  await page.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem('__test_cloud'))['users/user-a/appData/aurora'].payload).playlists.some(item=>item.name==='Dig list 2'));
+  await page.locator('#auroraPlaylistSelect option', {hasText:'Dig list 2'}).waitFor({state:'attached'});
+  await page.locator('#auroraPlaylistSelect').selectOption({label:'Saved list (0)'});
   // Last.fm 키는 계정별 브라우저 저장소에만 저장한다.
   await page.locator('#lfmKey').fill('0123456789abcdef0123456789abcdef');
   await page.locator('#lfmKeyForm button[type=submit]').click();
   await page.locator('#lfmStatus').waitFor();
   assert.equal(await page.evaluate(() => localStorage.getItem('ambient-lastfm-key:user-a')),'0123456789abcdef0123456789abcdef');
+  page.off('dialog', onNativeDialog);
+  assert.deepEqual(nativeDialogs, []);
   await open('aurora.html');
   await page.locator('#playlistSelect option', {hasText:'Saved list'}).waitFor({state:'attached'});
   page.once('dialog', dialog => dialog.accept('New list'));

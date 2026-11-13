@@ -28,9 +28,81 @@
 .playlist { position: sticky; top: 24px; min-width: 0; padding: 24px; }
 .playlist-heading { padding-bottom: 18px; margin-bottom: 8px; border-bottom: 1px solid var(--stroke); }
 .playlist h2 { margin: 10px 0 0; font-size: 20px; letter-spacing: -.03em; }
-.playlist_select { width: 100%; margin-top: 12px; padding: 8px 10px; border: 1px solid var(--stroke-2); border-radius: 10px; background: var(--glass-2); color: var(--fg); font-size: 13px; }
-.playlist_select option { background: #191721; color: var(--fg); }
 .playlist_hint { margin: 10px 0 0; color: var(--fg3); font-size: 12px; line-height: 1.6; }
+
+/* ---------- 플레이리스트 패널 (Aurora 사이드바와 같은 모양) ---------- */
+.pl_row { display: flex; gap: 6px; margin: 4px 0 10px; }
+.pl_row select { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 10px; background: rgba(255,255,255,.1); color: var(--fg); font-size: 14px; cursor: pointer; }
+.pl_row select option { color: #000; }
+.discovery-page .pl_row button { padding: 8px 10px; border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.1); color: var(--fg); font-size: 14px; line-height: 1.2; }
+.discovery-page .pl_row button:hover { background: rgba(255,255,255,.2); }
+.pl_tracks { list-style: none; margin: 0; padding: 0; }
+.pl_track { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 0; border-radius: 10px; }
+.pl_track:hover { background: rgba(255,255,255,.08); }
+.discovery-page .pl_open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px; border: 0; border-radius: 10px; background: transparent; color: var(--fg); font-size: 14px; text-align: left; }
+.discovery-page .pl_open:hover { background: transparent; }
+.pl_thumb { width: 42px; height: 42px; flex: none; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,.08); }
+.pl_thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.discovery-page .pl_track .mini { padding: 4px 8px; border-radius: 8px; flex: none; border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.1); color: var(--fg); }
+.discovery-page .pl_track .mini:hover { background: rgba(255,255,255,.2); }
+.pl_hint { opacity: .55; font-size: 13px; margin: 6px 2px; }
+.tinfo { flex: 1; min-width: 0; }
+.tinfo b, .tinfo small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tinfo b { font-weight: 700; }
+.tinfo small { opacity: .65; font-size: 12px; }
+.empty { display: grid; place-items: center; color: var(--fg3); font-size: 18px; background: linear-gradient(135deg, #ff8a5c33, #7c5cff33); }
+
+/* ---------- 추천 카드: 앨범 자켓 + 제목 ---------- */
+.rec_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 18px 14px; }
+.rec_card { min-width: 0; }
+.discovery-page .rec_cover { display: block; width: 100%; padding: 0; border: 0; border-radius: 12px; overflow: hidden; background: transparent; aspect-ratio: 1; box-shadow: 0 10px 30px #0006; transition: transform .25s var(--ease), box-shadow .25s; }
+.discovery-page .rec_cover:hover { transform: translateY(-3px); box-shadow: 0 16px 40px #000a; background: transparent; }
+.rec_cover_img { display: block; width: 100%; height: 100%; }
+.rec_cover_img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rec_cover_img.empty { display: grid; font-size: 34px; }
+.rec_meta { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; font-size: 13px; }
+.rec_meta .added_label { padding: 2px 4px; font-size: 11px; white-space: nowrap; }
+.discovery-page .rec_meta button { flex: none; padding: 3px 9px; font-size: 14px; }
+
+/* ---------- 페이지 안 대화창 ---------- */
+.dg_dialog { padding: 0; border: 0; border-radius: 20px; background: transparent; color: var(--fg); max-width: calc(100vw - 32px); }
+.dg_dialog::backdrop { background: rgba(6,6,12,.6); backdrop-filter: blur(6px); }
+.dg_dialog[open] { animation: dg-pop .22s var(--ease); }
+.dg_dialog_panel { width: min(400px, calc(100vw - 32px)); padding: 24px; border: 1px solid var(--stroke-2); border-radius: 20px; background: rgb(25,23,33); box-shadow: 0 30px 80px #000a; }
+.dg_dialog_panel h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: -.02em; }
+.dg_dialog_message { margin: 0 0 16px; color: var(--fg2); font-size: 14px; line-height: 1.7; white-space: pre-line; }
+.dg_dialog_field { display: grid; gap: 8px; margin-bottom: 6px; color: var(--fg2); font-size: 13px; }
+.dg_dialog_field input { padding: 10px 12px; border: 1px solid var(--stroke-2); border-radius: 10px; background: var(--glass-2); color: var(--fg); font-size: 14px; }
+.dg_dialog_field input:focus { outline: none; border-color: #ffb17a; box-shadow: 0 0 0 3px #ff8a5c22; }
+.dg_dialog_error { margin: 4px 0 0; color: #ffab9a; font-size: 12px; }
+.dg_dialog_actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 18px; }
+.discovery-page .dg_dialog_actions button { padding: 9px 16px; font-size: 13px; }
+.discovery-page .dg_primary { background: var(--fg); color: #17141c; border-color: transparent; font-weight: 700; }
+.discovery-page .dg_primary:hover { background: #fff; color: #17141c; }
+.discovery-page .dg_primary.danger { background: #ff6f6f; color: #fff; }
+.discovery-page .dg_primary.danger:hover { background: #ff8585; color: #fff; }
+
+/* 곡 정보 창 */
+.song_panel { position: relative; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 22px; width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; }
+.discovery-page .song_close { position: absolute; top: 12px; right: 12px; z-index: 1; padding: 4px 9px; border-radius: 50%; }
+.song_cover_img { display: block; width: 100%; aspect-ratio: 1; border-radius: 14px; overflow: hidden; box-shadow: 0 16px 40px #0008; }
+.song_cover_img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.song_cover_img.empty { display: grid; font-size: 48px; }
+.song_body { min-width: 0; padding-right: 20px; }
+.song_body h3 { margin: 8px 0 4px; font-size: 20px; overflow-wrap: anywhere; }
+.song_artist { margin: 0; color: var(--fg2); font-size: 15px; }
+.song_album { margin: 4px 0 0; color: var(--fg3); font-size: 13px; overflow-wrap: anywhere; }
+.song_tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+.song_tags:empty { display: none; }
+.song_stats { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 14px 0 0; font-size: 13px; }
+.song_stats dt { color: var(--fg3); }
+.song_stats dd { margin: 0; }
+.song_summary { margin: 14px 0 0; color: var(--fg2); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.song_links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 13px; }
+.song_links a { color: #9ed0ff; text-decoration: none; }
+.song_links a:hover { text-decoration: underline; }
+.song_panel .dg_dialog_actions { justify-content: flex-start; }
+@keyframes dg-pop { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 .playlist_body { max-height: 65dvh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #51465d transparent; }
 .discovery-page .migrate_button { width: 100%; margin-top: 12px; color: #ffc7ab; border-color: #ff8a5c55; background: #ff8a5c14; }
 .discovery-page .migrate_button:disabled { opacity: .7; cursor: progress; }
@@ -60,4 +132,8 @@
     .search_login_form button { padding: 10px 14px; }
     .input_box { font-size: 14px; }
     .recommendation_section { min-height: 180px; }
+    .rec_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .song_panel { grid-template-columns: minmax(0, 1fr); }
+    .song_cover_img { width: min(220px, 100%); }
+    .song_body { padding-right: 0; }
 }

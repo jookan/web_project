@@ -8,9 +8,9 @@
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="web_programming/css/ambient_theme.css">
     <link rel="stylesheet" href="web_programming/css/ambient_navigation.css">
-    <link rel = "stylesheet" href = "web_programming/css/digging.css">
+    <link rel = "stylesheet" href = "web_programming/css/digging.css?v=3">
     <script src="scripts/ambient_session.js" defer></script>
-    <script type="module" src="scripts/digging.js?v=2"></script>
+    <script type="module" src="scripts/digging.js?v=3"></script>
 </head>
 <body class="discovery-page">
     <div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
@@ -68,21 +68,65 @@
                 <div class="playlist-heading">
                     <span class="eyebrow">AURORA PLAYLIST</span>
                     <h2 id="playlistTitle">플레이리스트</h2>
-                    <select id="auroraPlaylistSelect" class="playlist_select" aria-label="Aurora 플레이리스트 선택"></select>
                     <p class="playlist_hint">Aurora의 YouTube 플레이리스트와 연동돼요. 곡의 태그로 장르를 분석해 추천해요.</p>
+                </div>
+                <!-- Aurora 플레이리스트 패널과 같은 구성: 선택 + 새로 만들기 / 이름 변경 / 삭제 -->
+                <div class="pl_row">
+                    <select id="auroraPlaylistSelect" aria-label="플레이리스트 선택"></select>
+                    <button id="newPlaylist" type="button" title="새 플레이리스트" aria-label="새 플레이리스트">＋</button>
+                    <button id="renamePlaylist" type="button" title="이름 변경" aria-label="플레이리스트 이름 변경">✎</button>
+                    <button id="deletePlaylist" type="button" title="삭제" aria-label="플레이리스트 삭제">🗑</button>
                 </div>
             </aside>
             <div class="playlist_recommendation">
                 <section class="recommendation_section box" aria-label="비슷한 장르 추천">
                     <h3>플레이리스트와 비슷한 장르</h3>
-                    <div></div>
+                    <div class="rec_list"></div>
                 </section>
                 <section class="recommendation_section box" aria-label="다른 장르 추천">
                     <h3>플레이리스트와 다른 장르</h3>
-                    <div></div>
+                    <div class="rec_list"></div>
                 </section>
             </div>
         </div>
     </main>
+
+    <!-- 플레이리스트 만들기·이름 변경·삭제 확인 등에 쓰는 페이지 안 대화창 (브라우저 prompt/confirm 대신) -->
+    <dialog id="dgDialog" class="dg_dialog" aria-labelledby="dgDialogTitle">
+        <form id="dgDialogForm" class="dg_dialog_panel" novalidate>
+            <h3 id="dgDialogTitle"></h3>
+            <p id="dgDialogMessage" class="dg_dialog_message"></p>
+            <label id="dgDialogField" class="dg_dialog_field">
+                <span id="dgDialogLabel"></span>
+                <input id="dgDialogInput" type="text" maxlength="40" autocomplete="off">
+            </label>
+            <p id="dgDialogError" class="dg_dialog_error" role="alert" hidden></p>
+            <div class="dg_dialog_actions">
+                <button id="dgDialogCancel" type="button">취소</button>
+                <button id="dgDialogOk" type="submit" class="dg_primary">확인</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- 앨범 자켓을 눌렀을 때 보여주는 곡 정보 -->
+    <dialog id="songDialog" class="dg_dialog song_dialog" aria-labelledby="songDialogTitle">
+        <div class="dg_dialog_panel song_panel">
+            <button id="songDialogClose" type="button" class="song_close" aria-label="닫기">✕</button>
+            <div id="songDialogCover" class="song_cover"></div>
+            <div class="song_body">
+                <span class="eyebrow">TRACK INFO</span>
+                <h3 id="songDialogTitle"></h3>
+                <p id="songDialogArtist" class="song_artist"></p>
+                <p id="songDialogAlbum" class="song_album"></p>
+                <div id="songDialogTags" class="song_tags"></div>
+                <dl id="songDialogStats" class="song_stats"></dl>
+                <p id="songDialogSummary" class="song_summary"></p>
+                <div id="songDialogLinks" class="song_links"></div>
+                <div id="songDialogActions" class="dg_dialog_actions"></div>
+            </div>
+        </div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

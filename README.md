@@ -17,7 +17,7 @@ HTML·CSS·JavaScript ES 모듈로 구성한 정적 사이트이며, 별도의 �
 | 커뮤니티 | [community.html](pages/community.html) | 게시글 피드, 카테고리·팔로잉 필터, 댓글·답글, 좋아요, 팔로우 |
 | 글쓰기 | [community_write.html](pages/community_write.html) | 카테고리 선택, 본문 작성, 첨부파일 정보 등록 |
 | 프로필 | [community_profile.html](pages/community_profile.html) | 작성한 글·좋아요한 글, 팔로워·팔로잉 수 확인 |
-| Aurora | [aurora.html](pages/aurora.html) | Spotify·YouTube 검색·재생, 플레이리스트 관리, 음악에 반응하는 배경 |
+| Aurora | [aurora.html](pages/aurora.html) | YouTube 검색·재생, 플레이리스트 관리, 음악에 반응하는 배경 |
 | 악보 연습 | [sheet_uploading.html](pages/sheet_uploading.html) | PDF 보기, 연주 순서 편집, BPM 기반 자동 넘기기, 메트로놈 |
 
 루트 [index.html](index.html)과 [pages/index.html](pages/index.html)은 로그인 화면으로 이동하는 진입점입니다. 서비스 화면의 공통 메뉴로 각 기능을 오갈 수 있습니다.
@@ -54,13 +54,13 @@ HTML·CSS·JavaScript ES 모듈로 구성한 정적 사이트이며, 별도의 �
 
 ### Aurora 음악 플레이어
 
-- Spotify Web API·YouTube Data API로 검색하고, Spotify Web Playback SDK·YouTube IFrame Player로 재생하는 코드를 제공합니다.
+- YouTube Data API로 검색하고 YouTube IFrame Player로 재생합니다.
 - 재생·일시정지, 이전·다음 곡, 재생 위치, 볼륨·음소거, 셔플·반복을 제어합니다.
-- 플레이리스트 생성·이름 변경·삭제와 곡 추가·제거를 지원하고 개인 목록을 DB에 저장합니다.
+- 플레이리스트 생성·이름 변경·삭제와 곡 추가·제거를 지원하고 개인 목록을 DB에 저장합니다. 왼쪽 패널의 연필 버튼을 누르면 같은 자리에서 이름을 바꿀 수 있습니다.
 - 커버 이미지의 색상을 Canvas 배경 애니메이션과 화면 강조색에 반영합니다.
-- 몰입 모드 버튼 또는 `F` 키로 조작 영역을 숨기거나 표시합니다.
+- 전체화면 버튼이나 `F` 키를 누르면 앨범 커버와 배경이 화면을 채웁니다. 마우스를 화면 아래로 옮기면 재생 조작이 나타나고, `Esc` 또는 `F` 키로 전체화면을 종료할 수 있습니다.
 
-Firebase 로그인과 음악 서비스 연결은 별도입니다. Spotify는 Premium 계정과 개발자 앱의 Client ID·Redirect URI 설정이 필요하며, YouTube 검색에는 YouTube Data API v3 키가 필요합니다. 실제 재생 가능 여부는 서비스 권한과 콘텐츠 재생 제한에도 영향을 받습니다.
+YouTube 검색에는 YouTube Data API v3 키가 필요합니다. 실제 재생 가능 여부는 콘텐츠 재생 제한에 영향을 받습니다.
 
 Aurora 원본: [RE2031 / ambient-music-site](https://github.com/RE2031/ambient-music-site).
 
@@ -96,7 +96,7 @@ Aurora 원본: [RE2031 / ambient-music-site](https://github.com/RE2031/ambient-m
 | 디깅·Aurora 개인 목록 | `users/{uid}/appData/{digging,aurora}` | 같은 계정으로 불러오기 |
 | PDF 정보·연습 설정 | `users/{uid}/scores/{scoreId}` | 같은 계정으로 불러오기 |
 | PDF·첨부파일 원본 | 브라우저 IndexedDB | 저장한 브라우저에만 존재 |
-| Spotify 인증 값·YouTube·Last.fm API 키 | 계정별 브라우저 저장소 | Firestore에 전송하지 않음 |
+| YouTube·Last.fm API 키 | 계정별 브라우저 저장소 | Firestore에 전송하지 않음 |
 | 게스트 개인 목록·악보 | 브라우저 저장소 | 계정 DB에 저장하지 않음 |
 
 Cloud Storage는 사용하지 않습니다. 브라우저 데이터를 삭제하면 해당 기기에만 있던 파일 원본이 사라질 수 있으므로 원본은 별도로 보관해야 합니다.
@@ -137,13 +137,12 @@ Last.fm API 키는 저장소에 넣지 않습니다. 사용하는 사람이 각�
 
 1. [Last.fm API 계정 만들기](https://www.last.fm/api/account/create)에서 앱 이름과 이메일만 입력해 API key(32자리)를 발급합니다. Shared secret은 사용하지 않습니다.
 2. 음악 디깅 화면 상단의 `Last.fm API 키` 칸에 붙여넣고 저장합니다.
-3. 추천 곡을 플레이리스트에 담으려면 Aurora(YouTube 모드)에서 YouTube API 키도 저장합니다.
+3. 추천 곡을 플레이리스트에 담으려면 Aurora에서 YouTube API 키도 저장합니다.
 
 예전에 쓰던 `config.js`/`config.example.js` 방식은 없앴습니다. 로컬에 `config.js`가 남아 있다면 지워도 됩니다.
 
 ### 4. Aurora 서비스 연결
 
-- Spotify: 개발자 앱에 Aurora 화면에 표시된 Redirect URI를 등록한 뒤 Client ID를 입력하고 연결합니다. 실제 접속 주소와 일치해야 합니다.
 - YouTube: Google Cloud에서 YouTube Data API v3를 활성화하고 발급한 API 키를 Aurora 화면에 입력합니다.
 
 ### 5. 다른 사람에게 사이트 공개

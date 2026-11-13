@@ -1,3 +1,7 @@
+import { openAccountState, addImportButton } from "./account_state.js";
+import { initializeUserArea } from "./firebase_nav.js";
+import { showDataError } from "./firebase_data.js";
+
 'use strict';
 
 /* =====================================================
@@ -11,33 +15,31 @@ const root = document.documentElement;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /* ---------- 상태 ---------- */
-const STORE = 'ambient-player-v1', KEYSTORE = 'ambient-yt-key';
-// 이전 버전의 탭에서 보내는 플레이리스트를 가져와요.
-try {
-  const m = /^#xfer=(.+)$/.exec(location.hash);
-  if (m) {
-    const d = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-    if (d.key && !localStorage.getItem(KEYSTORE)) localStorage.setItem(KEYSTORE, d.key);
-    // 플레이리스트는 id 기준으로 합쳐요 (없는 것만 추가, 같은 id는 없는 곡만 추가)
-    const mine = JSON.parse(localStorage.getItem(STORE) || 'null') || { playlists: [], current: {} };
-    (d.state?.playlists || []).forEach(p => {
-      const same = mine.playlists.find(x => x.id === p.id);
-      if (!same) mine.playlists.push(p);
-      else p.tracks.forEach(t => { if (!same.tracks.some(x => x.id === t.id)) same.tracks.push(t); });
-    });
-    mine.current = { ...(d.state?.current || {}), ...(mine.current || {}) };
-    localStorage.setItem(STORE, JSON.stringify(mine));
-    history.replaceState(null, '', location.pathname + location.search);
-  }
-} catch {}
-const state = load(STORE) || { playlists: [], current: {} };
+const playerStore = await openAccountState("aurora", "ambient-player-v1", () => ({ playlists: [], current: {} }));
+if (playerStore.loadError) showDataError(playerStore.loadError);
+const STORE = playerStore.cacheKey;
+const KEYSTORE = 'ambient-yt-key:' + playerStore.uid;
+await initializeUserArea($('userArea'));
+let state = playerStore.value;
+if (!state || !Array.isArray(state.playlists)) state = { playlists: [], current: {} };
 let ytKey = localStorage.getItem(KEYSTORE) || '';
 let queue = [], idx = -1, shuffle = false, loop = false;
 let playing = false;
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
-function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
-function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
+function save() {
+  const fields = ['id', 'source', 'uri', 'title', 'artist', 'artistId', 'album', 'art', 'thumb', 'vid', 'topic', 'genre', 'tags'];
+  const clean = {
+    playlists: state.playlists.map(list => ({
+      id: list.id, name: list.name, mode: list.mode,
+      tracks: list.tracks.map(track => Object.fromEntries(fields.filter(key => track[key] !== undefined).map(key => [key, track[key]])))
+    })),
+    current: { ...state.current }
+  };
+  const pending = playerStore.save(clean);
+  pending.catch(showDataError);
+  return pending;
+}
 const isYouTubeTrack = t => t.source ? t.source === 'youtube' : String(t.id).startsWith('yt:');
 const youtubeLists = () => state.playlists.filter(p => p.mode === 'youtube');
 const curList = () => youtubeLists().find(p => p.id === state.current.youtube) || youtubeLists()[0];
@@ -49,36 +51,21 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 4500);
 }
 
-/** 예전 YouTube 전용 페이지에서 만든 플레이리스트를 한 번만 가져옴 */
-(function migrateYouTube() {
-  if (localStorage.getItem('ambient-yt-migrated')) return;
-  const old = load('ambient-youtube-v1');
-  localStorage.setItem('ambient-yt-migrated', '1');
-  if (!old?.playlists) return;
-  for (const op of old.playlists) {
-    if (!op.tracks?.length) continue;
-    op.tracks.forEach(t => t.source = 'youtube');
-    const same = state.playlists.find(p => p.name === op.name && (
-      p.mode === 'youtube' || (!p.mode && (!p.tracks.length || p.tracks.some(isYouTubeTrack)))
-    ));
-    if (same) op.tracks.forEach(t => { if (!same.tracks.some(x => x.id === t.id)) same.tracks.push(t); });
-    else state.playlists.push({ id: uid(), name: op.name + ' (YouTube)', mode: 'youtube', tracks: op.tracks });
-  }
-  save();
-})();
-
-/** 기존 목록에서 YouTube 곡을 찾고 기본 플레이리스트를 보장해요. */
-(function normalizePlaylists() {
+function normalizePlaylists() {
+  state.playlists = state.playlists.filter(p => p && Array.isArray(p.tracks));
   for (const p of state.playlists) {
-    if (!p.mode && (!p.tracks.length || p.tracks.some(isYouTubeTrack))) p.mode = 'youtube';
+    if (!p.mode) p.mode = !p.tracks.length || p.tracks.some(isYouTubeTrack) ? 'youtube' : 'spotify';
   }
   if (!youtubeLists().length) state.playlists.push({ id: uid(), mode: 'youtube', name: '내 플레이리스트', tracks: [] });
-  if (typeof state.current !== 'object' || !state.current) state.current = { youtube: state.current };
+  if (typeof state.current !== 'object' || !state.current) {
+    state.current = typeof state.current === 'string' ? { youtube: state.current } : {};
+  }
   state.current.youtube = curList().id;
-  save();
-})();
+}
+normalizePlaylists();
+save();
 
-/*/* =====================================================
+/* =====================================================
  * YouTube (Data API 검색 + IFrame 플레이어)
  * ===================================================== */
 let ytp = null, ytReady = false, errStreak = 0;
@@ -142,6 +129,7 @@ async function searchYT(q) {
         id: 'yt:' + it.id, source: 'youtube', vid: it.id, title, artist, topic,
         album: it.snippet.channelTitle,
         art: (th.maxres || th.medium || th.high).url, thumb: (th.medium || th.default).url,
+        tags: (it.snippet.tags || []).slice(0, 15),   // 디깅 페이지가 장르 분석에 사용해요
         genre: (it.snippet.tags || []).slice(0, 15).join(' ')
       };
     })
@@ -346,7 +334,7 @@ function bgFrame(now) {
 requestAnimationFrame(bgFrame);
 
 /* =====================================================
- * 재생 제어 (모드별 분기)
+ * 재생 제어
  * ===================================================== */
 const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.53.85l10.8-6.86a1 1 0 0 0 0-1.7L9.53 4.29A1 1 0 0 0 8 5.14z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>';
@@ -538,14 +526,18 @@ $('newPlaylist').onclick = () => {
 
 const playlistRenameForm = $('playlistRenameForm');
 const playlistName = $('playlistName');
+let renamePlaylistId = null;
 function closePlaylistRename() {
+  renamePlaylistId = null;
   playlistRenameForm.hidden = true;
   $('playlistActions').hidden = false;
   $('renamePlaylist').focus();
 }
 
 $('renamePlaylist').onclick = () => {
-  playlistName.value = curList().name;
+  const playlist = curList();
+  renamePlaylistId = playlist.id;
+  playlistName.value = playlist.name;
   playlistName.setCustomValidity('');
   $('playlistActions').hidden = true;
   playlistRenameForm.hidden = false;
@@ -567,7 +559,12 @@ playlistRenameForm.addEventListener('submit', e => {
     playlistName.reportValidity();
     return;
   }
-  curList().name = name;
+  const playlist = youtubeLists().find(p => p.id === renamePlaylistId);
+  if (!playlist) {
+    closePlaylistRename();
+    return toast('이 플레이리스트가 삭제되었어요.');
+  }
+  playlist.name = name;
   save();
   renderPlaylists();
   closePlaylistRename();
@@ -678,8 +675,33 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'ArrowLeft') $('prev').click();
 });
 
+/* ---------- 다른 탭(디깅 페이지 등)에서 바뀐 플레이리스트 반영 ---------- */
+// 디깅에서 곡을 담거나 빼면 같은 계정 캐시 키가 바뀌어요. 저장은 하지 않고 화면과 재생 큐만 맞춰요.
+window.addEventListener('storage', e => {
+  if (e.key !== STORE || !e.newValue) return;
+  let next;
+  try { next = JSON.parse(e.newValue); } catch { return; }
+  if (!next || !Array.isArray(next.playlists)) return;
+  state = next;
+  normalizePlaylists();
+  syncQueue();
+  renderPlaylists();
+});
+
 /* ---------- 초기화 ---------- */
 (function init() {
+  addImportButton($('playlistPanel'), '기존 브라우저 목록 가져오기', playerStore, async old => {
+    if (!old || !Array.isArray(old.playlists)) throw new Error('가져올 플레이리스트가 올바르지 않아요.');
+    for (const list of old.playlists) {
+      if (!list || !Array.isArray(list.tracks)) continue;
+      const existing = state.playlists.find(item => item.id === list.id);
+      if (!existing) state.playlists.push(list);
+      else for (const track of list.tracks) if (!existing.tracks.some(item => item.id === track.id)) existing.tracks.push(track);
+    }
+    normalizePlaylists();
+    await save();
+    renderPlaylists();
+  }, showDataError);
   $('cover').style.display = $('glow').style.display = 'none';
   $('play').innerHTML = ICON_PLAY;
   renderPlaylists();

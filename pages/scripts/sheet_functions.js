@@ -1,4 +1,5 @@
-﻿// 시작점: 악보 목록, PDF 표시, 연습 설정과 자동 넘기기를 연결한다.
+import { initializeUserArea } from "./firebase_nav.js";
+// 시작점: 악보 목록, PDF 표시, 연습 설정과 자동 넘기기를 연결한다.
 import { prepareViewer, renderPage, observeViewerResize } from "./pdf_viewer.js";
 import { initializeScoreLibrary, updateLibraryButtons, restoreScoreLibrary } from "./score_library.js";
 import { saveScore } from "./score_storage.js";
@@ -141,6 +142,7 @@ document.addEventListener("visibilitychange", function () {
 window.addEventListener("pagehide", function () { stopAutoTurn(); });
 
 async function initializePage() {
+    await initializeUserArea(document.getElementById("userArea"));
     initializeAutoTurn(showAutoTurnPage, showPlaybackState, startMetronome);
     initializePracticeSettings(function () { saveScore(activeScore); updateButtons(); });
     initializeScoreLibrary(selectScore, setLoading, function () {

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="./web_programming/css/ambient_theme.css">
     <link rel="stylesheet" href="./web_programming/css/ambient_practice.css">
     <link rel="stylesheet" href="./web_programming/css/ambient_navigation.css">
+    <script src="scripts/ambient_session.js"></script>
 </head>
 <body>
     <div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
@@ -24,6 +25,7 @@
       <a href="sheet_uploading.html" aria-current="page">악보 연습</a>
     </nav>
 
+    <span class="user-area" id="userArea"></span>
   </header>
 
     <main class="main-container">
@@ -36,7 +38,7 @@
                     <input id="Sheet-file" type="file" accept=".pdf,application/pdf" hidden>
                     <button type="button" class="btn-upload" disabled>악보 업로드</button>
                 </div>
-                <p id="storage-status" class="hint" role="status">이 브라우저에 악보와 설정을 저장해요.</p>
+                <p id="storage-status" class="hint" role="status">PDF 원본은 이 브라우저에, 로그인한 계정에는 악보 정보와 연습 설정을 저장해요.</p>
             </section>
 
             <section class="sheet-footer" aria-labelledby="practice-title">

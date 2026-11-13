@@ -44,7 +44,7 @@
     <label for="postText">내용</label>
     <textarea id="postText" rows="8" placeholder="무슨 곡 이야기를 나눠볼까요?"></textarea>
 
-    <label for="fileInput">파일 첨부 (최대 3개, 파일당 5MB 이하)</label>
+    <label for="fileInput">파일 정보 첨부 (원본은 이 브라우저에 보관, 최대 3개·5MB 이하)</label>
     <input type="file" id="fileInput" multiple>
     <ul class="file-list" id="fileList"></ul>
 
@@ -58,7 +58,6 @@
   </main>
 
 
-  <script src="scripts/community_common_.js"></script>
-  <script src="scripts/community_write_.js"></script>
+  <script type="module" src="scripts/community_write_.js"></script>
 </body>
 </html>

@@ -1,26 +1,56 @@
+import { openAccountState } from "./account_state.js";
+import { initializeUserArea } from "./firebase_nav.js";
+import { showDataError } from "./firebase_data.js";
+
 // ============================================================
-// digging.js - 노래 검색 / 플레이리스트 / 장르 기반 디깅 추천
-//   검색·유사곡·장르 추천 : Last.fm API
-//   장르 보완(태그가 없을 때) : MusicBrainz API
+// digging.js - Aurora 플레이리스트 기반 장르 디깅 추천
+//   플레이리스트 : Aurora(YouTube 모드)의 계정 플레이리스트(users/{uid}/appData/aurora)를 공유
+//   태그 추출     : YouTube 영상 태그 + Last.fm 곡/가수 태그 (+ MusicBrainz 보완)
+//   검색·추천     : Last.fm API
+//   추천 곡 담기  : YouTube Data API로 영상을 찾아 Aurora 플레이리스트에 추가
 // ============================================================
 
 // ------------------------------------------------------------
 // 1. 설정
 // ------------------------------------------------------------
-// API 키는 config.js에서 읽어온다. (config.js는 .gitignore에 있어서 GitHub에 올라가지 않는다.)
-// 만드는 법: config.example.js를 config.js로 복사한 뒤 키를 넣는다.
-const LASTFM_KEY = (typeof CONFIG !== "undefined" && CONFIG.LASTFM_KEY) || "";
+// Aurora와 같은 계정 저장소를 연다. (로그인: Firestore + UID별 로컬 캐시 / 게스트: 브라우저에만 저장)
+const auroraStore = await openAccountState("aurora", "ambient-player-v1", () => ({ playlists: [], current: {} }));
+if (auroraStore.loadError) showDataError(auroraStore.loadError);
+// 예전 디깅 전용 곡 목록. 'Aurora로 옮기기'에만 사용한다.
+const diggingStore = await openAccountState("digging", "musicdig_playlist_v2", () => []);
+if (diggingStore.loadError) showDataError(diggingStore.loadError);
+
+// 페이지를 열 때 계정 저장소에서 읽은 Aurora 상태 (아래 상태 초기화에서 바로 쓰이므로 여기서 선언)
+let latestAurora = auroraStore.value;
+
+const UID = auroraStore.uid;
+const AURORA_STORE = auroraStore.cacheKey;               // Aurora가 저장할 때 갱신하는 로컬 캐시 키
+const AURORA_MODE_KEY = "ambient-mode:" + UID;
+const MOVED_KEY = "musicdig_moved_to_aurora:" + UID;     // Aurora로 옮긴 예전 디깅 곡 id 목록
+
+// API 키는 코드·DB에 넣지 않는다. 사용자가 직접 발급받아 화면에서 입력하면
+// 이 브라우저에 계정(UID)별로만 저장된다. (Aurora의 YouTube 키와 같은 방식)
+//   Last.fm 키 : 이 페이지의 'Last.fm API 키' 패널에서 입력
+//   YouTube 키 : Aurora 페이지에서 입력한 키를 같이 사용
+const LASTFM_KEY_STORE = "ambient-lastfm-key:" + UID;
+const YT_KEY_STORE = "ambient-yt-key:" + UID;
+const readKey = key => { try { return localStorage.getItem(key) || ""; } catch { return ""; } };
+const getLastfmKey = () => readKey(LASTFM_KEY_STORE);
 
 const LASTFM_URL = "https://ws.audioscrobbler.com/2.0/";
 const MUSICBRAINZ_URL = "https://musicbrainz.org/ws/2/";
+const YOUTUBE_URL = "https://www.googleapis.com/youtube/v3/";
 
 const RECOMMEND_COUNT = 5;              // 추천 칸마다 보여줄 곡 수
 const SEARCH_DELAY = 400;               // 타이핑 멈추고 검색 시작까지 대기(ms)
 const MIN_TAG_COUNT = 20;               // Last.fm 태그 투표 수 최소 기준(0~100)
 const SIMILAR_TAG_LIMIT = 3;            // '비슷한 장르' 추천에 쓸 상위 장르 수
 const DIFFERENT_TAG_LIMIT = 3;          // '다른 장르' 추천에 쓸 장르 수
-const PLAYLIST_KEY = "musicdig_playlist_v2";
+const MAX_GENRES = 5;                   // 곡 하나에 붙일 최대 장르 수
 const TAG_CACHE_KEY = "musicdig_tag_cache_v1";
+
+// YouTube 키: Aurora에서 저장한 키를 같이 쓴다.
+const getYouTubeKey = () => readKey(YT_KEY_STORE);
 
 // '다른 장르' 추천 후보. 플레이리스트 장르와 겹치지 않는 것 중에서 고른다.
 const DIFFERENT_TAG_POOL = [
@@ -29,6 +59,19 @@ const DIFFERENT_TAG_POOL = [
     "house", "latin", "bossa nova", "shoegaze", "disco", "gospel",
     "techno", "ska", "soundtrack", "lo-fi", "city pop",
 ];
+
+// YouTube 영상 태그는 가수 이름·곡 제목 등이 섞여 있어서, 이 목록에 있는 장르만 골라 쓴다.
+const GENRE_VOCAB = new Set([
+    ...DIFFERENT_TAG_POOL,
+    "pop", "k-pop", "j-pop", "c-pop", "rock", "indie", "indie pop", "indie rock",
+    "alternative", "alternative rock", "hip-hop", "rap", "trap", "r&b", "neo-soul",
+    "ballad", "dance", "edm", "electropop", "synthpop", "dream pop", "pop rock",
+    "pop punk", "hard rock", "heavy metal", "metalcore", "emo", "grunge", "post-rock",
+    "acoustic", "singer-songwriter", "trot", "j-rock", "k-indie", "k-rock",
+    "k-hip-hop", "k-r&b", "anime", "chill", "chillout", "new age", "instrumental",
+    "piano", "dubstep", "drum and bass", "future bass", "idm", "garage", "grime",
+    "electronica", "trance", "synthwave", "jazz hip-hop", "orchestral",
+]);
 
 // 장르가 아닌 Last.fm 태그는 걸러낸다. 필요하면 계속 추가하세요.
 const TAG_BLACKLIST = new Set([
@@ -43,23 +86,33 @@ const TAG_BLACKLIST = new Set([
 const TAG_ALIASES = {
     "hip hop": "hip-hop", "hiphop": "hip-hop", "hip-hop/rap": "hip-hop",
     "kpop": "k-pop", "k pop": "k-pop", "korean pop": "k-pop",
-    "rnb": "r&b", "r and b": "r&b", "rhythm and blues": "r&b",
+    "jpop": "j-pop", "j pop": "j-pop",
+    "rnb": "r&b", "r and b": "r&b", "rhythm and blues": "r&b", "r&b/soul": "r&b",
+    "lofi": "lo-fi", "lo fi": "lo-fi", "ost": "soundtrack", "citypop": "city pop",
+    // YouTube 한국어 태그
+    "발라드": "ballad", "힙합": "hip-hop", "케이팝": "k-pop", "재즈": "jazz",
+    "록": "rock", "락": "rock", "인디": "indie", "댄스": "dance", "알앤비": "r&b",
+    "트로트": "trot", "팝": "pop", "클래식": "classical", "어쿠스틱": "acoustic",
+    "시티팝": "city pop", "로파이": "lo-fi", "일렉트로닉": "electronic",
+    "메탈": "metal", "포크": "folk", "랩": "rap", "펑크": "funk", "소울": "soul",
 };
 
 // ------------------------------------------------------------
 // 2. 상태(state)
 // ------------------------------------------------------------
-// 플레이리스트: { id, title, artist, genres: [] } 객체 배열
-let playlist = loadPlaylist();
-let nowPlayingId = null;
-let playQueue = [];
-let tagCache = loadTagCache();          // 곡 id -> 장르 배열 (API 호출 절약)
+// playlist: Aurora 현재 YouTube 플레이리스트를 디깅용 곡 객체로 바꾼 배열
+//   { id, title, artist, genres: [], trackId, ytTags: [] }
+let auroraState = loadAuroraState();
+let playlist = [];
+let tagCache = loadTagCache();          // 곡 id -> 외부 API(Last.fm/MusicBrainz) 장르 배열
+const pendingAdds = new Set();          // YouTube에서 찾는 중인 곡 id
 
 let lastSearchResults = [];             // 가장 최근 검색 결과(곡 객체 배열)
 let searchTimer = null;
 let searchToken = 0;                    // 오래된 검색 응답이 최신 결과를 덮어쓰지 않게
 let similarToken = 0;
 let differentToken = 0;
+let analyzeToken = 0;
 
 // ------------------------------------------------------------
 // 3. HTML 요소
@@ -67,6 +120,7 @@ let differentToken = 0;
 const searchForm = document.querySelector(".search_login_form");
 const searchInput = document.querySelector(".input_box");
 const playlistBox = document.querySelector(".playlist");
+const playlistSelect = document.getElementById("auroraPlaylistSelect");
 const sections = document.querySelectorAll(".recommendation_section");
 const similarList = sections[0].querySelector("div");
 const differentList = sections[1].querySelector("div");
@@ -79,7 +133,7 @@ searchResults.setAttribute("aria-live", "polite");
 searchResults.hidden = true;
 searchArea.appendChild(searchResults);
 
-MD.renderUserArea(document.getElementById("userArea"));
+await initializeUserArea(document.getElementById("userArea"));
 
 const playlistBody = document.createElement("div");
 playlistBody.className = "playlist_body";
@@ -94,6 +148,9 @@ addRefreshButton(sections[1], () => loadDifferentSection());
 // ------------------------------------------------------------
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const toArray = value => (Array.isArray(value) ? value : value ? [value] : []);
+function uid() {        // 상단 상태 초기화에서 먼저 쓰이므로 함수 선언(호이스팅)으로 둔다
+    return Math.random().toString(36).slice(2, 9);
+}
 
 function shuffle(array) {
     const copy = [...array];
@@ -108,19 +165,34 @@ function makeSong(title, artist, genres = []) {
     title = String(title || "").trim();
     artist = String(artist || "").trim();
     return {
-        id: `${artist}|||${title}`.toLowerCase(),
+        // (feat. ...) 같은 꼬리를 뗀 제목으로 id를 만들어 YouTube/Last.fm 표기 차이로 중복되지 않게 한다.
+        id: `${artist}|||${cleanTitle(title)}`.toLowerCase(),
         title,
         artist,
         genres: [...genres],
     };
 }
 
-function isInPlaylist(id) {
-    return playlist.some(song => song.id === id);
+// YouTube 제목에 남은 (feat. ...), [ ... ], | ... 같은 꼬리를 떼서 Last.fm에서 찾기 쉽게 만든다.
+function cleanTitle(title) {
+    return String(title || "")
+        .replace(/\s*[(\[（【][^)\]）】]*[)\]）】]/g, "")
+        .replace(/\s+(feat\.?|ft\.?|featuring)\s.*$/i, "")
+        .replace(/\s*[|｜].*$/, "")
+        .replace(/\s+/g, " ")
+        .trim() || String(title || "").trim();
 }
 
-function findInPlaylist(id) {
-    return playlist.find(song => song.id === id);
+function mergeGenres(...lists) {
+    const out = [];
+    lists.flat().forEach(genre => {
+        if (genre && !out.includes(genre)) out.push(genre);
+    });
+    return out.slice(0, MAX_GENRES);
+}
+
+function isInPlaylist(id) {
+    return playlist.some(song => song.id === id);
 }
 
 function makeButton(text, title, onClick) {
@@ -153,8 +225,15 @@ function showMessage(container, text) {
     container.appendChild(makeMessage(text));
 }
 
+function makeLabel(text) {
+    const label = document.createElement("span");
+    label.className = "added_label";
+    label.textContent = text;
+    return label;
+}
+
 // "노래 제목 - 가수 [장르]" 한 줄 (textContent라 HTML이 섞여 있어도 안전)
-function makeSongRow(song) {
+function makeSongRow(song, genreCount = 2) {
     const row = document.createElement("p");
     row.className = "song_row";
 
@@ -162,7 +241,7 @@ function makeSongRow(song) {
     info.className = "song_info";
     info.textContent = `${song.title} - ${song.artist} `;
 
-    song.genres.slice(0, 2).forEach(genre => {
+    song.genres.slice(0, genreCount).forEach(genre => {
         const tag = document.createElement("span");
         tag.className = "genre_tag";
         tag.textContent = genre;
@@ -174,27 +253,72 @@ function makeSongRow(song) {
     return row;
 }
 
-// ------------------------------------------------------------
-// 5. 저장 (localStorage)
-// ------------------------------------------------------------
-function savePlaylist() {
-    try {
-        localStorage.setItem(PLAYLIST_KEY, JSON.stringify(playlist));
-    } catch (error) {
-        console.warn("플레이리스트 저장 실패:", error);
-    }
+// 검색 결과·추천 곡 오른쪽 버튼: 담김 / 찾는 중 / +
+function appendAddControl(row, song) {
+    if (isInPlaylist(song.id)) row.appendChild(makeLabel("담김"));
+    else if (pendingAdds.has(song.id)) row.appendChild(makeLabel("YouTube에서 찾는 중…"));
+    else row.appendChild(makeButton("+", "Aurora 플레이리스트에 담기", () => addToPlaylist(song)));
 }
 
-function loadPlaylist() {
+// ------------------------------------------------------------
+// 5. 저장 - Aurora 계정 플레이리스트 공유
+// ------------------------------------------------------------
+// Aurora 저장 형식: { playlists: [{ id, name, mode, tracks: [...] }], current: { youtube: id, spotify: id } }
+// latestAurora(1번 설정에서 선언)는 Aurora 탭의 저장(storage 이벤트)과 이 페이지의 저장으로만 갱신한다.
+function loadAuroraState() {
+    let state = null;
     try {
-        const saved = JSON.parse(localStorage.getItem(PLAYLIST_KEY));
-        if (!Array.isArray(saved)) return [];
-        return saved
-            .filter(s => s && s.title && s.artist)
-            .map(s => ({ ...makeSong(s.title, s.artist, s.genres || []) }));
+        state = JSON.parse(JSON.stringify(latestAurora));   // 깊은 복사: 고치다 실패해도 원본 유지
     } catch (error) {
-        return [];
+        state = null;
     }
+    if (!state || !Array.isArray(state.playlists)) state = { playlists: [], current: {} };
+    if (!state.current || typeof state.current !== "object") state.current = {};
+    // Aurora를 아직 한 번도 열지 않았으면 YouTube 기본 플레이리스트를 만들어 둔다(담을 때 저장됨).
+    if (!state.playlists.some(p => p.mode === "youtube")) {
+        state.playlists.push({ id: uid(), mode: "youtube", name: "내 플레이리스트", tracks: [] });
+    }
+    return state;
+}
+
+function youtubeLists(state = auroraState) {
+    return state.playlists.filter(p => p.mode === "youtube");
+}
+
+function currentAuroraList(state = auroraState) {
+    const lists = youtubeLists(state);
+    return lists.find(p => p.id === state.current.youtube) || lists[0];
+}
+
+// 다른 탭(Aurora)에서 바뀐 내용을 덮어쓰지 않도록, 항상 최신 값에 고쳐서 계정 저장소에 저장한다.
+// (저장하면 로컬 캐시도 바뀌어서 열려 있는 Aurora 탭이 storage 이벤트로 다시 읽는다.)
+function updateAurora(change) {
+    const state = loadAuroraState();
+    change(state);
+    latestAurora = state;
+    auroraState = state;
+    const pending = auroraStore.save(state);
+    pending.catch(showDataError);
+    return pending;
+}
+
+// Aurora 트랙 -> 디깅 곡 객체
+function trackToSong(track) {
+    const song = makeSong(cleanTitle(track.title), track.artist);
+    song.trackId = track.id;
+    song.ytTags = youtubeTagsOf(track);
+    song.genres = mergeGenres(tagCache[song.id] || [], genresFromYouTubeTags(song.ytTags, song.artist));
+    return song;
+}
+
+function refreshPlaylist() {
+    auroraState = loadAuroraState();
+    const list = currentAuroraList();
+    const seen = new Set();
+    playlist = list.tracks
+        .filter(t => t.source === "youtube" || String(t.id).startsWith("yt:"))
+        .map(trackToSong)
+        .filter(song => song.title && song.artist && !seen.has(song.id) && seen.add(song.id));
 }
 
 function saveTagCache() {
@@ -214,22 +338,26 @@ function loadTagCache() {
 }
 
 // ------------------------------------------------------------
-// 6. API 호출 (Last.fm / MusicBrainz)
+// 6. API 호출 (Last.fm / MusicBrainz / YouTube)
 // ------------------------------------------------------------
 async function lastfm(method, params = {}) {
-    if (!LASTFM_KEY || LASTFM_KEY === "YOUR_LASTFM_API_KEY") {
-        throw new Error("config.js에 Last.fm API 키를 넣어주세요. (config.example.js 참고)");
+    const apiKey = getLastfmKey();
+    if (!apiKey) {
+        throw new Error("위의 'Last.fm API 키' 칸에 발급받은 키를 먼저 저장해주세요.");
     }
     const url = new URL(LASTFM_URL);
     url.search = new URLSearchParams({
         method,
-        api_key: LASTFM_KEY,
+        api_key: apiKey,
         format: "json",
         ...params,
     });
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Last.fm 요청 실패 (HTTP ${response.status})`);
     const data = await response.json();
+    if (data.error === 10 || data.error === 26) {
+        throw new Error("Last.fm API 키가 올바르지 않아요. '키 변경'을 눌러 다시 입력해주세요.");
+    }
     if (data.error) throw new Error(`Last.fm: ${data.message}`);
     return data;
 }
@@ -248,8 +376,19 @@ function musicbrainz(path, params = {}) {
     return request;
 }
 
+async function youtube(path, params) {
+    const key = getYouTubeKey();
+    if (!key) throw new Error("Aurora에서 YouTube API 키를 먼저 저장해주세요.");
+    const url = new URL(YOUTUBE_URL + path);
+    url.search = new URLSearchParams({ ...params, key });
+    const response = await fetch(url);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || `YouTube 요청 실패 (HTTP ${response.status})`);
+    return data;
+}
+
 // ------------------------------------------------------------
-// 7. 장르(태그) 가져오기
+// 7. 장르(태그) 추출
 // ------------------------------------------------------------
 function normalizeTag(name) {
     const tag = String(name).toLowerCase().trim();
@@ -277,7 +416,26 @@ function cleanTags(rawTags, artist) {
 
     let picked = unique.filter(t => t.count >= MIN_TAG_COUNT);
     if (picked.length === 0) picked = unique.slice(0, 2);   // 기준 미달이면 상위 2개라도
-    return picked.slice(0, 5).map(t => t.name);
+    return picked.slice(0, MAX_GENRES).map(t => t.name);
+}
+
+// Aurora 트랙에 저장된 YouTube 태그 꺼내기
+//   새로 담은 곡: tags 배열 / 예전에 담은 곡: genre 문자열(태그를 공백으로 이어 붙인 것)
+function youtubeTagsOf(track) {
+    if (Array.isArray(track.tags)) return track.tags;
+    return String(track.genre || "").split(/\s+/).filter(Boolean);
+}
+
+// YouTube 태그 중 장르 사전에 있는 것만 장르로 인정한다.
+function genresFromYouTubeTags(tags, artist) {
+    const genres = [];
+    toArray(tags).forEach(raw => {
+        const tag = normalizeTag(String(raw).replace(/\s+(music|songs?|음악)$/i, ""));
+        if (GENRE_VOCAB.has(tag) && isGenreTag(tag, artist) && !genres.includes(tag)) {
+            genres.push(tag);
+        }
+    });
+    return genres.slice(0, MAX_GENRES);
 }
 
 async function genresFromLastfmTrack(artist, title) {
@@ -302,15 +460,19 @@ async function genresFromMusicBrainz(artist) {
     return cleanTags(raw, artist);
 }
 
-// 곡 하나의 장르 찾기: 곡 태그 -> 가수 태그 -> MusicBrainz 순서로 시도
-async function getGenres(song) {
-    if (tagCache[song.id] && tagCache[song.id].length > 0) return tagCache[song.id];
+// 외부 API로 곡 장르 찾기: 곡 태그 -> 가수 태그 -> MusicBrainz 순서로 시도.
+// YouTube 태그로 이미 장르를 찾은 곡은 느린 MusicBrainz까지는 가지 않는다.
+async function lookupExternalGenres(song) {
+    if (Array.isArray(tagCache[song.id])) return tagCache[song.id];
 
+    const hasYouTubeGenres = genresFromYouTubeTags(song.ytTags, song.artist).length > 0;
     const steps = [
         () => genresFromLastfmTrack(song.artist, song.title),
         () => genresFromLastfmArtist(song.artist),
-        () => genresFromMusicBrainz(song.artist),
     ];
+    if (!hasYouTubeGenres) steps.push(() => genresFromMusicBrainz(song.artist));
+
+    let failed = false;
     for (const step of steps) {
         try {
             const genres = await step();
@@ -320,74 +482,208 @@ async function getGenres(song) {
                 return genres;
             }
         } catch (error) {
+            failed = true;
             console.warn("장르 조회 실패:", error.message);
         }
+    }
+    // API가 정상 응답했는데 태그가 없으면 '없음'으로 기억해서 매번 다시 묻지 않는다.
+    if (!failed) {
+        tagCache[song.id] = [];
+        saveTagCache();
     }
     return [];
 }
 
 // ------------------------------------------------------------
-// 8. 플레이리스트 담기 / 빼기
+// 8. Aurora 플레이리스트 담기 / 빼기
 // ------------------------------------------------------------
+// Last.fm 곡(제목/가수) -> 재생 가능한 YouTube 영상을 찾아 Aurora 트랙 형식으로 만든다.
+const isoToSec = iso => {
+    const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso || "") || [];
+    return (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0);
+};
+
+async function findYouTubeTrack(song) {
+    const search = await youtube("search", {
+        part: "snippet", type: "video", videoCategoryId: "10", videoEmbeddable: "true",
+        videoSyndicated: "true", maxResults: "8", q: `${song.artist} ${song.title}`,
+    });
+    const ids = search.items.map(item => item.id.videoId).filter(Boolean);
+    if (ids.length === 0) return null;
+
+    const videos = await youtube("videos", { part: "snippet,contentDetails,status", id: ids.join(",") });
+    const candidates = videos.items
+        .filter(it => {
+            const sec = isoToSec(it.contentDetails.duration);
+            const rr = it.contentDetails.regionRestriction;
+            return sec >= 60 && sec <= 720 && it.snippet.liveBroadcastContent === "none"
+                && it.status.embeddable !== false
+                && !rr?.blocked?.includes("KR") && (!rr?.allowed || rr.allowed.includes("KR"));
+        })
+        // Topic 채널(공식 음원)이 임베드가 잘 되고 앨범 아트도 나와서 우선
+        .sort((a, b) => / - Topic$/.test(b.snippet.channelTitle) - / - Topic$/.test(a.snippet.channelTitle));
+
+    for (const it of candidates) {
+        // 401/403 = 임베드 금지. 네트워크 오류일 땐 통과시킨다. (Aurora와 같은 검사)
+        const ok = await fetch("https://www.youtube.com/oembed?format=json&url="
+            + encodeURIComponent("https://www.youtube.com/watch?v=" + it.id)).then(r => r.ok, () => true);
+        if (!ok) continue;
+
+        const th = it.snippet.thumbnails;
+        const tags = (it.snippet.tags || []).slice(0, 15);
+        return {
+            id: "yt:" + it.id, source: "youtube", vid: it.id,
+            title: song.title, artist: song.artist,
+            topic: / - Topic$/.test(it.snippet.channelTitle),
+            album: it.snippet.channelTitle,
+            art: (th.maxres || th.high || th.medium || th.default).url,
+            thumb: (th.medium || th.default).url,
+            tags,
+            // Aurora의 무드(배경 분위기) 계산용: 장르 + 영상 태그
+            genre: [...song.genres, ...tags].join(" "),
+        };
+    }
+    return null;
+}
+
 async function addToPlaylist(song) {
     if (isInPlaylist(song.id)) {
         alert("이미 플레이리스트에 있는 곡이에요.");
         return;
     }
-    const entry = makeSong(song.title, song.artist, song.genres);
-    playlist.push(entry);
-    savePlaylist();
-    renderPlaylist();
-    renderSearchResults();                      // 검색 결과의 '+' 버튼을 '담김'으로
-
-    // 정확한 장르를 가져와서 채운 뒤 추천을 새로 만든다.
-    const genres = await getGenres(entry);
-    if (genres.length > 0) entry.genres = genres;
-    savePlaylist();
-    renderPlaylist();
-    renderRecommendations();
-}
-
-function removeFromPlaylist(id) {
-    playlist = playlist.filter(song => song.id !== id);
-    playQueue = playQueue.filter(songId => songId !== id);
-    if (nowPlayingId === id) nowPlayingId = null;
-    savePlaylist();
-    renderPlaylist();
-    renderSearchResults();
-    renderRecommendations();
-}
-
-// ------------------------------------------------------------
-// 9. 재생 (지금은 "재생 중" 표시만)
-//    YouTube 연결 시 playSong 안에서 검색/재생하면 된다.
-// ------------------------------------------------------------
-function playSong(id) {
-    nowPlayingId = id;
-    renderPlaylist();
-    // TODO: YouTube 연결 (예: `${artist} ${title}` 검색 후 player.loadVideoById)
-    console.log("재생:", findInPlaylist(id));
-}
-
-function playAll() {
-    if (playlist.length === 0) return;
-    playQueue = playlist.map(song => song.id);
-    playSong(playQueue[0]);
-}
-
-function playNext() {
-    const index = playQueue.indexOf(nowPlayingId);
-    if (index === -1 || index === playQueue.length - 1) {
-        nowPlayingId = null;
-        playQueue = [];
-        renderPlaylist();
+    if (pendingAdds.has(song.id)) return;
+    if (!getYouTubeKey()) {
+        alert("Aurora에서 YouTube API 키를 먼저 저장해주세요. 담은 곡은 Aurora에서 YouTube로 재생돼요.");
         return;
     }
-    playSong(playQueue[index + 1]);
+
+    pendingAdds.add(song.id);
+    rerenderAddButtons();
+    let track = null;
+    try {
+        track = await findYouTubeTrack(song);
+        if (!track) alert(`YouTube에서 재생 가능한 "${song.title}" 영상을 찾지 못했어요.`);
+    } catch (error) {
+        alert("YouTube 검색 실패: " + error.message);
+    }
+    pendingAdds.delete(song.id);
+
+    if (track) {
+        updateAurora(state => {
+            const list = currentAuroraList(state);
+            state.current.youtube = list.id;
+            if (!list.tracks.some(t => t.id === track.id)) list.tracks.push(track);
+        });
+    }
+    syncFromAurora();
+}
+
+function removeFromPlaylist(song) {
+    updateAurora(state => {
+        const list = currentAuroraList(state);
+        list.tracks = list.tracks.filter(t => t.id !== song.trackId);
+    });
+    syncFromAurora();
+}
+
+// 재생은 Aurora에서 한다. 저장이 끝난 뒤 현재 플레이리스트를 YouTube 모드로 열어 준다.
+async function openInAurora() {
+    try {
+        localStorage.setItem(AURORA_MODE_KEY, "youtube");
+    } catch (error) { /* 모드 저장이 막혀도 이동은 한다 */ }
+    try {
+        await auroraStore.flush();
+    } catch (error) {
+        showDataError(error);
+    }
+    location.href = "aurora.html";
 }
 
 // ------------------------------------------------------------
-// 10. 장르 기반 추천
+// 8-1. 예전 디깅 목록 -> Aurora로 옮기기
+// ------------------------------------------------------------
+// 예전 디깅 곡에는 YouTube 영상 정보가 없어서, 곡마다 YouTube에서 영상을 찾아 담는다.
+// 원본(계정의 appData/digging, 계정 구분 전 브라우저 목록)은 지우지 않고, 옮긴 곡 id만 기억한다.
+let migrateProgress = "";
+
+function readMovedIds() {
+    try {
+        return JSON.parse(localStorage.getItem(MOVED_KEY)) || [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function legacyDiggingSongs() {
+    const skip = new Set(readMovedIds());
+    const songs = [];
+    [...toArray(diggingStore.value), ...toArray(diggingStore.legacy())].forEach(item => {
+        if (!item || !item.title || !item.artist) return;
+        const song = makeSong(item.title, item.artist, Array.isArray(item.genres) ? item.genres : []);
+        if (skip.has(song.id) || isInPlaylist(song.id) || songs.some(s => s.id === song.id)) return;
+        songs.push(song);
+    });
+    return songs;
+}
+
+async function migrateLegacySongs() {
+    const songs = legacyDiggingSongs();
+    if (songs.length === 0 || migrateProgress) return;
+    if (!getYouTubeKey()) {
+        alert("Aurora에서 YouTube API 키를 먼저 저장해주세요. 옮긴 곡은 Aurora에서 YouTube로 재생돼요.");
+        return;
+    }
+    if (!confirm(`예전 디깅 목록의 ${songs.length}곡을 YouTube에서 찾아 현재 Aurora 플레이리스트에 담을까요?\n`
+        + "(곡마다 YouTube API 할당량을 약 100씩 사용해요.)")) return;
+
+    const tracks = [];
+    const movedIds = [];
+    const failed = [];
+    for (const [i, song] of songs.entries()) {
+        migrateProgress = `옮기는 중… (${i + 1}/${songs.length})`;
+        renderPlaylist();
+        try {
+            const track = await findYouTubeTrack(song);
+            if (track) {
+                tracks.push(track);
+                movedIds.push(song.id);
+                // 예전 목록에 있던 장르는 캐시에 넣어 Last.fm 재조회를 줄인다.
+                if (song.genres.length > 0 && !tagCache[song.id]?.length) tagCache[song.id] = song.genres;
+            } else {
+                failed.push(song);
+            }
+        } catch (error) {
+            failed.push(song);
+            if (/quota/i.test(error.message)) {
+                alert("YouTube API 오늘 할당량을 다 써서 멈췄어요. 남은 곡은 내일 다시 옮길 수 있어요.");
+                break;
+            }
+        }
+    }
+    migrateProgress = "";
+    saveTagCache();
+
+    if (tracks.length > 0) {
+        updateAurora(state => {
+            const list = currentAuroraList(state);
+            state.current.youtube = list.id;
+            tracks.forEach(track => {
+                if (!list.tracks.some(t => t.id === track.id)) list.tracks.push(track);
+            });
+        });
+        try {
+            localStorage.setItem(MOVED_KEY, JSON.stringify([...readMovedIds(), ...movedIds]));
+        } catch (error) { /* 기억하지 못해도 이미 담긴 곡은 목록에서 제외된다 */ }
+    }
+    const failText = failed.length > 0
+        ? `\n찾지 못한 곡 ${failed.length}개: ${failed.slice(0, 5).map(s => `${s.title} - ${s.artist}`).join(", ")}${failed.length > 5 ? " 등" : ""}`
+        : "";
+    alert(`${tracks.length}곡을 Aurora 플레이리스트로 옮겼어요.${failText}`);
+    syncFromAurora();
+}
+
+// ------------------------------------------------------------
+// 9. 장르 기반 추천
 // ------------------------------------------------------------
 // 플레이리스트 전체의 장르 프로필 만들기
 // 곡마다 앞쪽 장르일수록 높은 점수를 준다.
@@ -449,52 +745,78 @@ async function collectRecommendations(tags) {
 }
 
 // ------------------------------------------------------------
-// 11. 화면 그리기
+// 10. 화면 그리기
 // ------------------------------------------------------------
+function renderPlaylistSelect() {
+    const lists = youtubeLists();
+    const current = currentAuroraList();
+    playlistSelect.innerHTML = "";
+    lists.forEach(list => {
+        const option = document.createElement("option");
+        option.value = list.id;
+        option.textContent = `${list.name} (${list.tracks.length})`;
+        playlistSelect.appendChild(option);
+    });
+    playlistSelect.value = current.id;
+}
+
 function renderPlaylist() {
+    renderPlaylistSelect();
     playlistBody.innerHTML = "";
 
-    if (playlist.length === 0) {
-        playlistBody.appendChild(
-            makeMessage("검색하거나 추천 곡의 + 버튼으로 노래를 담아보세요.")
+    // 예전 디깅 목록에 남은 곡이 있으면 Aurora로 옮기는 버튼을 보여준다.
+    const legacy = legacyDiggingSongs();
+    if (legacy.length > 0 || migrateProgress) {
+        const button = makeButton(
+            migrateProgress || `예전 디깅 곡 ${legacy.length}곡 Aurora로 옮기기`,
+            "예전 디깅 목록의 곡을 YouTube에서 찾아 현재 Aurora 플레이리스트에 담기",
+            () => migrateLegacySongs()
         );
+        button.className = "migrate_button";
+        button.disabled = migrateProgress !== "";
+        playlistBody.appendChild(button);
+    }
+
+    if (playlist.length === 0) {
+        playlistBody.appendChild(makeMessage(
+            "Aurora(YouTube 모드)에서 노래를 담거나, 검색·추천 곡의 + 버튼으로 담아보세요."
+        ));
         return;
     }
 
     const controls = document.createElement("div");
     controls.className = "playlist_controls";
-    controls.appendChild(makeButton("▶ 전체 재생", "플레이리스트 전체 재생", playAll));
-
-    if (nowPlayingId !== null && findInPlaylist(nowPlayingId)) {
-        const nowPlaying = document.createElement("p");
-        nowPlaying.className = "now_playing";
-        nowPlaying.textContent = `재생 중: ${findInPlaylist(nowPlayingId).title}`;
-        controls.appendChild(nowPlaying);
-        if (playQueue.length > 0) {
-            controls.appendChild(makeButton("다음 곡", "다음 곡 재생", playNext));
-        }
-    }
+    controls.appendChild(makeButton("▶ Aurora에서 재생", "이 플레이리스트를 Aurora에서 재생", openInAurora));
     playlistBody.appendChild(controls);
 
     playlist.forEach(song => {
-        const row = makeSongRow(song);
-        if (song.id === nowPlayingId) row.classList.add("playing");
-        row.appendChild(makeButton("▶", "이 곡 재생", () => playSong(song.id)));
-        row.appendChild(makeButton("✕", "플레이리스트에서 빼기", () => removeFromPlaylist(song.id)));
+        const row = makeSongRow(song, 3);
+        row.appendChild(makeButton("✕", "플레이리스트에서 빼기", () => removeFromPlaylist(song)));
         playlistBody.appendChild(row);
     });
 }
 
 function fillSongList(container, list, emptyText) {
     container.innerHTML = "";
+    container._songs = list;
     if (list.length === 0) {
         container.appendChild(makeMessage(emptyText));
         return;
     }
     list.forEach(song => {
         const row = makeSongRow(song);
-        row.appendChild(makeButton("+", "플레이리스트에 담기", () => addToPlaylist(song)));
+        appendAddControl(row, song);
         container.appendChild(row);
+    });
+}
+
+// 담기 상태(+ / 찾는 중 / 담김)만 바뀌었을 때 네트워크 호출 없이 다시 그린다.
+function rerenderAddButtons() {
+    renderSearchResults();
+    [similarList, differentList].forEach(container => {
+        if (Array.isArray(container._songs) && container._songs.length > 0) {
+            fillSongList(container, container._songs, "");
+        }
     });
 }
 
@@ -502,6 +824,7 @@ async function loadSimilarSection() {
     const token = ++similarToken;
     const title = sections[0].querySelector("h3");
     const profile = getProfile();
+    similarList._songs = null;
 
     if (playlist.length === 0) {
         title.textContent = "플레이리스트와 비슷한 장르";
@@ -510,7 +833,7 @@ async function loadSimilarSection() {
     }
     if (profile.top.length === 0) {
         title.textContent = "플레이리스트와 비슷한 장르";
-        showMessage(similarList, "장르 정보를 찾는 중이거나, 찾지 못했어요.");
+        showMessage(similarList, "플레이리스트 곡에서 장르 태그를 찾지 못했어요.");
         return;
     }
 
@@ -532,6 +855,7 @@ async function loadDifferentSection() {
     const token = ++differentToken;
     const title = sections[1].querySelector("h3");
     const profile = getProfile();
+    differentList._songs = null;
 
     if (playlist.length === 0 || profile.top.length === 0) {
         title.textContent = "플레이리스트와 다른 장르";
@@ -539,7 +863,7 @@ async function loadDifferentSection() {
             differentList,
             playlist.length === 0
                 ? "플레이리스트에 노래를 담으면 다른 장르를 추천해드려요."
-                : "장르 정보를 찾는 중이거나, 찾지 못했어요."
+                : "플레이리스트 곡에서 장르 태그를 찾지 못했어요."
         );
         return;
     }
@@ -563,6 +887,59 @@ function renderRecommendations() {
     loadSimilarSection();
     loadDifferentSection();
 }
+
+// ------------------------------------------------------------
+// 11. Aurora 플레이리스트 읽기 -> 태그 추출 -> 추천
+// ------------------------------------------------------------
+let lastProfileKey = null;
+
+async function syncFromAurora() {
+    const token = ++analyzeToken;
+    refreshPlaylist();
+    renderPlaylist();
+    renderSearchResults();
+
+    // 외부 API 장르를 아직 모르는 곡만 차례로 조회 (MusicBrainz 속도 제한 때문에 순서대로)
+    const missing = playlist.filter(song => !Array.isArray(tagCache[song.id]));
+    if (missing.length > 0) {
+        [similarList, differentList].forEach(list => {
+            list._songs = null;
+            showMessage(list, `플레이리스트에서 태그를 추출하는 중... (${missing.length}곡)`);
+        });
+        lastProfileKey = null;
+    }
+    for (const song of missing) {
+        await lookupExternalGenres(song);
+        if (token !== analyzeToken) return;     // 그 사이 플레이리스트가 바뀌었으면 새 작업에 맡긴다
+        song.genres = mergeGenres(tagCache[song.id] || [], genresFromYouTubeTags(song.ytTags, song.artist));
+        renderPlaylist();
+    }
+
+    // 플레이리스트 곡 구성이 바뀌었을 때만 추천을 새로 받는다.
+    const profileKey = playlist.map(song => song.id).join("\n");
+    if (profileKey !== lastProfileKey) {
+        lastProfileKey = profileKey;
+        renderRecommendations();
+    } else {
+        rerenderAddButtons();
+    }
+}
+
+playlistSelect.addEventListener("change", () => {
+    updateAurora(state => { state.current.youtube = playlistSelect.value; });
+    syncFromAurora();
+});
+
+// Aurora가 다른 탭에 열려 있어도 플레이리스트 변경을 바로 반영
+window.addEventListener("storage", event => {
+    if (event.key !== AURORA_STORE || !event.newValue) return;
+    try {
+        latestAurora = JSON.parse(event.newValue);
+    } catch (error) {
+        return;
+    }
+    syncFromAurora();
+});
 
 // ------------------------------------------------------------
 // 12. 검색 (Last.fm track.search)
@@ -597,12 +974,8 @@ async function runSearch(keyword) {
 
 // 마지막 검색 결과를 화면에 그린다(네트워크 호출 없음).
 function renderSearchResults(keyword = searchInput.value.trim()) {
-    if (keyword === "") {
-        searchResults.hidden = true;
-        return;
-    }
+    if (keyword === "" || searchResults.hidden) return;
     if (lastSearchResults.length === 0) {
-        searchResults.hidden = false;
         showMessage(searchResults, `"${keyword}"에 맞는 곡이 없어요. 영어 표기나 "가수 - 제목"으로도 검색해보세요.`);
         return;
     }
@@ -610,17 +983,14 @@ function renderSearchResults(keyword = searchInput.value.trim()) {
     searchResults.innerHTML = "";
     lastSearchResults.forEach(song => {
         const row = makeSongRow(song);
-        if (isInPlaylist(song.id)) {
-            const added = document.createElement("span");
-            added.className = "added_label";
-            added.textContent = "담김";
-            row.appendChild(added);
-        } else {
-            row.appendChild(makeButton("+", "플레이리스트에 담기", () => addToPlaylist(song)));
-        }
+        appendAddControl(row, song);
         searchResults.appendChild(row);
     });
+}
+
+function showSearchResults() {
     searchResults.hidden = false;
+    renderSearchResults();
 }
 
 // 타이핑을 멈추면 검색 (글자 하나마다 API를 부르지 않도록 지연)
@@ -654,32 +1024,63 @@ document.addEventListener("click", event => {
 });
 
 searchInput.addEventListener("focus", () => {
-    if (searchInput.value.trim() !== "" && lastSearchResults.length > 0) {
-        renderSearchResults();
-    }
+    if (searchInput.value.trim() !== "" && lastSearchResults.length > 0) showSearchResults();
 });
 
 // ------------------------------------------------------------
-// 13. 시작
+// 13. API 키 입력 (Aurora의 YouTube 키 입력과 같은 방식)
 // ------------------------------------------------------------
-renderPlaylist();
-renderRecommendations();
+const lfmPanel = document.getElementById("lfmPanel");
+const lfmStatus = document.getElementById("lfmStatus");
+const lfmKeyInput = document.getElementById("lfmKey");
+const ytKeyHint = document.getElementById("ytKeyHint");
 
-// 장르가 비어 있는 저장된 곡이 있으면 다시 조회해서 채운다.
-(async function fillMissingGenres() {
-    let changed = false;
-    for (const song of playlist) {
-        if (song.genres.length === 0) {
-            const genres = await getGenres(song);
-            if (genres.length > 0) {
-                song.genres = genres;
-                changed = true;
-            }
-        }
+function updateKeyUI() {
+    const hasKey = getLastfmKey() !== "";
+    lfmPanel.hidden = hasKey;
+    lfmStatus.hidden = !hasKey;
+    ytKeyHint.hidden = getYouTubeKey() !== "";
+}
+
+// 키가 바뀌면 검색 결과·추천을 새 키로 다시 불러온다.
+function onKeyChanged() {
+    updateKeyUI();
+    lastProfileKey = null;
+    syncFromAurora();
+    const keyword = searchInput.value.trim();
+    if (keyword !== "" && !searchResults.hidden) runSearch(keyword);
+}
+
+document.getElementById("lfmKeyForm").addEventListener("submit", event => {
+    event.preventDefault();
+    const key = lfmKeyInput.value.trim();
+    if (!/^[0-9a-f]{32}$/i.test(key)) {
+        alert("Last.fm API key는 영문/숫자 32자리예요. 'API key' 값을 복사했는지 확인해주세요. (Shared secret 아님)");
+        return;
     }
-    if (changed) {
-        savePlaylist();
-        renderPlaylist();
-        renderRecommendations();
+    try {
+        localStorage.setItem(LASTFM_KEY_STORE, key);
+    } catch (error) {
+        alert("브라우저 저장소를 사용할 수 없어 키를 저장하지 못했어요. (시크릿 모드·저장소 차단 확인)");
+        return;
     }
-})();
+    lfmKeyInput.value = "";
+    onKeyChanged();
+});
+
+document.getElementById("lfmKeyReset").addEventListener("click", () => {
+    try { localStorage.removeItem(LASTFM_KEY_STORE); } catch (error) { /* 무시 */ }
+    onKeyChanged();
+    lfmKeyInput.focus();
+});
+
+// 다른 탭(Aurora)에서 YouTube 키를 저장하면 안내 문구를 갱신
+window.addEventListener("storage", event => {
+    if (event.key === YT_KEY_STORE || event.key === LASTFM_KEY_STORE || event.key === null) updateKeyUI();
+});
+
+// ------------------------------------------------------------
+// 14. 시작
+// ------------------------------------------------------------
+updateKeyUI();
+syncFromAurora();

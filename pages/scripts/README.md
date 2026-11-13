@@ -4,13 +4,18 @@
 
 | 파일 | 역할 |
 | --- | --- |
-| `ambient_session.js` | Firebase 연결 전의 브라우저 데모 세션 읽기·저장·삭제 |
-| `session_guard.js` | 시작 화면과 Aurora의 데모 세션 검사. `ambient_session.js` 다음에 실행 |
+| `ambient_session.js` | 게스트 입장 상태 읽기·저장·삭제 |
+| `session_guard.js` | Firebase 인증 복원 이후 시작 화면과 Aurora의 접근 상태 검사 |
 | `ambient_login.js` | 로그인·회원가입 탭, 입력값 검사, 비밀번호 표시, 게스트 입장 |
-| `ambient_hub.js` | 시작 화면의 사용자 이름 표시와 로그아웃 |
+| `ambient_hub.js` | Firestore 프로필 이름 표시와 Firebase 로그아웃 |
+| `firebase_data.js` | 공통 인증·비공개/공개 프로필·오류 표시 |
+| `firebase_nav.js` | 페이지 상단 사용자 표시와 계정 변경 처리 |
+| `community_store.js` | 게시글·댓글·좋아요·팔로우의 Firestore 저장/실시간 조회 |
+| `account_state.js` | 디깅/Aurora 개인 목록의 Firestore 저장과 UID별 로컬 캐시 |
+| `local_files.js` | 첨부파일 원본의 로컬 보관과 열기 |
 
 로그인과 시작 화면의 HTML에는 스크립트 경로만 두고 실행 코드는 위 파일에서 관리합니다.
-`session_guard.js`는 기존 데모 동작을 보존한 코드이며 실제 서버 인증이나 Firebase 권한 검사를 대신하지 않습니다.
+화면의 접근 검사와 별도로 `firestore.rules`에서 실제 데이터 접근 권한을 검사합니다.
 
 ## 악보 기능
 
@@ -25,7 +30,7 @@ HTML은 `sheet_functions.js` 하나를 `type="module"`로 불러온다.
 | `practice_settings.js` | BPM·박 수 검사, 연주 순서 편집·추가·삭제, 예상 시간과 현재 단계 표시 |
 | `auto_turn.js` | 단계별 시간 계산, 시작·정지, 순서에 따른 자동 넘기기 |
 | `metronome.js` | 자동 넘기기 단계의 박자 소리 생성 및 정지 |
-| `score_storage.js` | IndexedDB에 PDF와 악보별 설정 저장·복원 |
+| `score_storage.js` | UID별 IndexedDB의 PDF 원본과 Firestore의 악보 설정 저장·복원 |
 | `vendor/pdfjs/` | 외부 PDF.js 라이브러리. 직접 수정하는 학습 코드가 아님 |
 
 ## 악보를 선택했을 때
@@ -37,9 +42,8 @@ HTML은 `sheet_functions.js` 하나를 `type="module"`로 불러온다.
 
 각 기능은 같은 `score` 객체를 전달받는다. 설정을 다른 객체로 복사하지
 않으므로, BPM을 바꾸고 다른 악보를 선택했다 돌아와도 변경값이 유지된다.
-PDF와 설정은 현재 브라우저의 IndexedDB에 저장하며 새로고침하면 복원한다.
-브라우저 데이터를 삭제하거나 저장 공간을 확보하는 과정에서 사라질 수 있고,
-다른 브라우저나 기기와 공유되지는 않는다.
+PDF 원본은 UID별 IndexedDB에, 로그인한 사용자의 설정은 Firestore에도 저장한다.
+다른 기기에서는 같은 PDF를 선택해 설정을 복원한다. 게스트는 로컬에만 저장한다.
 
 공부할 때는 메인의 `selectScore()`부터 시작해 호출하는 함수로 따라가면 된다.
 

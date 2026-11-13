@@ -1,12 +1,12 @@
-//커뮤니티 글쓰기 전용 페이지
-//서버가 없는 단계라 첨부 파일은 "이름/크기"만 저장하고,
-//작은 이미지(700KB 이하)만 미리보기용으로 함께 저장
+import MD from "./community_common_.js";
+import { showDataError } from "./firebase_data.js";
 
-document.addEventListener('DOMContentLoaded', function () {
-  const MD = window.MD;
+//커뮤니티 글쓰기 전용 페이지
+// 글과 파일 정보는 Firestore에, 첨부 원본은 이 브라우저에 저장한다.
+
+MD.ready.then(function () {
   const MAX_FILES = 3;
   const MAX_FILE_SIZE = 5 * 1024 * 1024;  //파일 하나당 5MB까지 선택 가능
-  const MAX_PREVIEW_SIZE = 700 * 1024;    //이 크기 이하 이미지만 미리보기 저장
 
   const categorySelect = document.getElementById('category');
   const textArea = document.getElementById('postText');
@@ -74,53 +74,24 @@ document.addEventListener('DOMContentLoaded', function () {
     renderFiles();
   });
 
-  // ---------등록---------
-  function readFile(file) {
-    return new Promise(function (resolve) {
-      const info = { name: file.name, size: file.size, type: file.type };
-      if (file.type.indexOf('image/') === 0 && file.size <= MAX_PREVIEW_SIZE) {
-        const reader = new FileReader();
-        reader.onload = function () {
-          info.dataUrl = reader.result;
-          resolve(info);
-        };
-        reader.onerror = function () { resolve(info); };
-        reader.readAsDataURL(file);
-      } else {
-        resolve(info);
-      }
-    });
-  }
-
-  submitBtn.addEventListener('click', function () {
-    const text = textArea.value.trim();
-    if (text === '') {
-      hint.textContent = '내용을 입력해주세요.';
-      return;
-    }
-    hint.textContent = '';
+  // 첨부 원본은 로컬에, 글과 파일 정보는 Firestore에 저장한다.
+  textArea.maxLength = 10000;
+  if (!MD.myId()) {
+    hint.textContent = '글을 작성하려면 Google로 로그인해 주세요.';
     submitBtn.disabled = true;
-
-    Promise.all(selected.map(readFile)).then(function (files) {
-      const category = categorySelect.value;
-      const posts = MD.getPosts();
-      posts.push({
-        id: 'p' + Date.now(),
-        author: MD.myName(),
-        category: category,
-        ts: Date.now(),
-        text: text,
-        baseLikes: 0,
-        likedBy: [],
-        comments: 0,
-        files: files
-      });
-      if (!MD.savePosts(posts)) {
-        hint.textContent = '저장 공간이 부족해요. 첨부한 이미지를 줄이거나 빼고 다시 시도해주세요.';
-        submitBtn.disabled = false;
-        return;
-      }
-      window.location.href = 'community.html?tab=' + category;
-    });
+  }
+  submitBtn.addEventListener('click', async function () {
+    const text = textArea.value.trim();
+    if (!text) { hint.textContent = '내용을 입력해주세요.'; return; }
+    if (submitBtn.disabled) return;
+    hint.textContent = '게시글을 저장하고 있어요.';
+    submitBtn.disabled = true;
+    try {
+      await MD.createPost(categorySelect.value, text, selected);
+      window.location.href = 'community.html?tab=' + categorySelect.value;
+    } catch (error) {
+      hint.textContent = error.message || '게시글을 저장하지 못했어요.';
+      submitBtn.disabled = false;
+    }
   });
-});
+}).catch(showDataError);

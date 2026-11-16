@@ -9,6 +9,7 @@ MD.ready.then(function () {
   const MAX_FILE_SIZE = 5 * 1024 * 1024;  //파일 하나당 5MB까지 선택 가능
 
   const categorySelect = document.getElementById('category');
+  const titleInput = document.getElementById('postTitle');
   const textArea = document.getElementById('postText');
   const fileInput = document.getElementById('fileInput');
   const fileList = document.getElementById('fileList');
@@ -81,13 +82,15 @@ MD.ready.then(function () {
     submitBtn.disabled = true;
   }
   submitBtn.addEventListener('click', async function () {
+    const title = titleInput.value.trim();
     const text = textArea.value.trim();
+    if (!title) { hint.textContent = '제목을 입력해주세요.'; return; }
     if (!text) { hint.textContent = '내용을 입력해주세요.'; return; }
     if (submitBtn.disabled) return;
     hint.textContent = '게시글을 저장하고 있어요.';
     submitBtn.disabled = true;
     try {
-      await MD.createPost(categorySelect.value, text, selected);
+      await MD.createPost(categorySelect.value, text, selected, title);
       window.location.href = 'community.html?tab=' + categorySelect.value;
     } catch (error) {
       hint.textContent = error.message || '게시글을 저장하지 못했어요.';

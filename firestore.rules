@@ -21,7 +21,8 @@ service cloud.firestore {
     }
     function post(data) {
       return data.keys().hasAll(['authorUid', 'category', 'text', 'files', 'createdAt'])
-        && data.keys().hasOnly(['authorUid', 'category', 'text', 'files', 'createdAt'])
+        && data.keys().hasOnly(['authorUid', 'category', 'text', 'files', 'createdAt', 'title'])
+        && (!('title' in data) || (data.title is string && data.title.size() > 0 && data.title.size() <= 100))
         && data.authorUid is string && data.category in ['song', 'sheet', 'free']
         && data.text is string && data.text.size() > 0 && data.text.size() <= 10000
         && attachments(data.files) && data.createdAt is timestamp;
@@ -76,7 +77,7 @@ service cloud.firestore {
       allow create: if signedIn() && post(request.resource.data)
         && request.resource.data.authorUid == request.auth.uid && request.resource.data.createdAt == request.time;
       allow update: if owner(resource.data.authorUid) && post(request.resource.data)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'category', 'files']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'text', 'category', 'files']);
       allow delete: if owner(resource.data.authorUid);
     }
     match /comments/{commentId} {

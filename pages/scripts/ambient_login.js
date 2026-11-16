@@ -19,7 +19,7 @@ import { ensureProfile } from "./firebase_data.js";
   var mode = 'login', busy = false;
   var tabs = document.querySelector('.tabs');
   var COPY = {
-    login:  { title: '다시 만나서 반가워요', sub: '로그인하고 음악 커뮤니티, 악보 연습, 스트리밍으로 들어가 보세요.', btn: '로그인' },
+    login:  { title: '로그인', sub: '로그인하고 음악 커뮤니티, 악보 연습, 스트리밍으로 들어가 보세요.', btn: '로그인' },
     signup: { title: '함께 시작해요', sub: '이름과 이메일만 있으면 바로 시작할 수 있어요.', btn: '회원가입' }
   };
 

@@ -75,11 +75,11 @@ MD.ready.then(function () {
     let emptyText = '';
 
     if (currentTab === 'posts') {
-      myPosts.forEach(function (p) { const card = MD.renderPostCard(p, refresh); listEl.appendChild(card); if (card._focusFn) card._focusFn(); });
+      myPosts.forEach(function (p) { listEl.appendChild(MD.renderPostRow(p, { showCategory: true })); });
       isEmpty = myPosts.length === 0;
       emptyText = isMe ? '아직 작성한 글이 없어요.' : targetName + '님이 작성한 글이 아직 없어요.';
     } else if (currentTab === 'likes') {
-      likedPosts.forEach(function (p) { const card = MD.renderPostCard(p, refresh); listEl.appendChild(card); if (card._focusFn) card._focusFn(); });
+      likedPosts.forEach(function (p) { listEl.appendChild(MD.renderPostRow(p, { showCategory: true })); });
       isEmpty = likedPosts.length === 0;
       emptyText = '아직 좋아요를 누른 글이 없어요.';
     } else {

@@ -50,6 +50,12 @@ export async function setDoc(ref, data) {
   test.writes.push(ref.path);
   persist(); notify();
 }
+export async function deleteDoc(ref) {
+  if (test.failWrite) throw Object.assign(new Error("write failed"), { code: "permission-denied" });
+  delete test.data[ref.path];
+  test.writes.push(ref.path);
+  persist(); notify();
+}
 export async function addDoc(ref, data) { const next = doc(ref); await setDoc(next, data); return next; }
 export function onSnapshot(ref, callback) {
   const item = { ref, callback }; test.listeners.push(item);

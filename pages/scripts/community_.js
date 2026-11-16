@@ -29,9 +29,7 @@ MD.ready.then(function () {
 
     postList.replaceChildren();
     posts.forEach(function (p) {
-      const card = MD.renderPostCard(p, render);
-      postList.appendChild(card);
-      if (card._focusFn) card._focusFn();
+      postList.appendChild(MD.renderPostRow(p, { showCategory: currentTab === 'following' }));
     });
 
     emptyMsg.classList.toggle('show', posts.length === 0);

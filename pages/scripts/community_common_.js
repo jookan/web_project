@@ -5,7 +5,7 @@ import { showDataError } from "./firebase_data.js";
 
 (function () {
   const { getCurrentUser, myName, myId, getPosts, getFollowing, toggleFollow,
-    getFollowerCount, countComments, addComment, addReply, renderUserArea,
+    getFollowerCount, countComments, addComment, addReply, deletePost, renderUserArea,
     CATEGORY_LABEL } = store;
   const COMMENT_PAGE_SIZE = 3;
 
@@ -24,6 +24,23 @@ import { showDataError } from "./firebase_data.js";
     if (bytes < 1024) return bytes + 'B';
     if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + 'KB';
     return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+  }
+
+  // 제목이 없는 예전 글은 본문 첫 줄을 제목처럼 보여줌
+  function postTitle(post) {
+    if (post.title) return post.title;
+    const firstLine = (post.text || '').split('\n').map(function (l) { return l.trim(); }).find(Boolean) || '(내용 없음)';
+    return firstLine.length > 40 ? firstLine.slice(0, 40) + '…' : firstLine;
+  }
+
+  function formatDate(ts) {
+    const d = new Date(ts);
+    const pad = function (n) { return String(n).padStart(2, '0'); };
+    return pad(d.getFullYear() % 100) + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + '.';
+  }
+
+  function postUrl(id) {
+    return 'community_post.html?id=' + encodeURIComponent(id);
   }
 
   function profileUrl(name) {
@@ -292,22 +309,51 @@ import { showDataError } from "./firebase_data.js";
     return panel;
   }
 
+  // ---------- 목록의 글 한 줄 (제목 + 글쓴이·날짜, 오른쪽에 댓글 수) ----------
+  // opts.showCategory: 카테고리가 섞여 있는 목록(팔로잉, 프로필)에서 카테고리 이름을 같이 표시
+  function renderPostRow(post, opts) {
+    opts = opts || {};
+    const row = el('div', 'post-row');
+    const main = el('div', 'row-main');
+    const title = el('a', 'row-title', postTitle(post));
+    title.href = postUrl(post.id);
+    main.appendChild(title);
+    const meta = el('div', 'row-meta');
+    meta.appendChild(nameLink(post.author, post.authorUid));
+    meta.appendChild(el('span', 'row-date', formatDate(post.ts)));
+    if (opts.showCategory && CATEGORY_LABEL[post.category]) meta.appendChild(el('span', 'row-cat', CATEGORY_LABEL[post.category]));
+    main.appendChild(meta);
+    row.appendChild(main);
+
+    const count = el('a', 'row-count');
+    count.href = postUrl(post.id);
+    count.appendChild(el('strong', '', String(countComments(post))));
+    count.appendChild(el('span', '', '댓글'));
+    row.appendChild(count);
+    return row;
+  }
+
   // ---------- 게시글 카드 만들기 ----------
   // onChange: 팔로우/좋아요 상태가 바뀐 뒤 목록 다시 그려야 할 때 호출됨
-  function renderPostCard(post, onChange) {
+  // opts.detail: 글 상세 화면 (제목 표시, 댓글창 항상 열림, 내 글 삭제 버튼) / opts.onDelete: 삭제 후 호출
+  function renderPostCard(post, onChange, opts) {
+    opts = opts || {};
     const me = myId();
     const ui = getUi(post.id);
+    if (opts.detail) ui.open = true;
     const card = document.createElement('article');
-    card.className = 'post-card';
+    card.className = 'post-card' + (opts.detail ? ' post-detail' : '');
 
     // 이 카드 하나만 최신 데이터로 다시 그림 (댓글 열기/등록 등)
     function refreshCard() {
       if (!card.isConnected && onChange) { onChange(); return; }
       const latest = getPosts().find(function (p) { return p.id === post.id; }) || post;
-      const fresh = renderPostCard(latest, onChange);
+      const fresh = renderPostCard(latest, onChange, opts);
       card.replaceWith(fresh);
       if (fresh._focusFn) fresh._focusFn();
     }
+
+    if (opts.detail) card.appendChild(el('h2', 'post-title', postTitle(post)));
 
     // 머리 부분: 아바타(클릭 시 프로필) + 이름 + 시간/카테고리 + 팔로우 버튼
     const header = document.createElement('div');
@@ -327,6 +373,31 @@ import { showDataError } from "./firebase_data.js";
     header.appendChild(avatarLink(post.author, '', post.authorUid));
     header.appendChild(info);
 
+    if (opts.detail && post.authorUid === me) { // 내 글 상세: 점 세 개(⋮) 메뉴 안에 삭제
+      const menu = el('div', 'more-menu');
+      const menuBtn = el('button', 'menu-btn', '⋮');
+      menuBtn.type = 'button';
+      menuBtn.title = '더보기';
+      menuBtn.setAttribute('aria-haspopup', 'true');
+      const list = el('div', 'menu-list');
+      const delItem = el('button', 'menu-item', '삭제');
+      delItem.type = 'button';
+      delItem.addEventListener('click', async function () {
+        list.classList.remove('open');
+        if (!window.confirm('이 글을 삭제할까요? 삭제한 글은 되돌릴 수 없어요.')) return;
+        delItem.disabled = true;
+        try { await deletePost(post.id); if (opts.onDelete) opts.onDelete(post); }
+        catch (error) { showDataError(error); delItem.disabled = false; }
+      });
+      menuBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        list.classList.toggle('open');
+      });
+      list.appendChild(delItem);
+      menu.appendChild(menuBtn);
+      menu.appendChild(list);
+      header.appendChild(menu);
+    }
     if (post.authorUid !== me) { // 내 글에는 팔로우 버튼을 보여주지 않음
       const followBtn = document.createElement('button');
       followBtn.type = 'button';
@@ -370,7 +441,7 @@ import { showDataError } from "./firebase_data.js";
 
     // 하단: 좋아요 + 댓글 버튼
     const footer = document.createElement('p');
-    footer.className = 'post-meta';
+    footer.className = 'post-meta post-card-footer';
     const likeBtn = document.createElement('button');
     likeBtn.type = 'button';
     likeBtn.className = 'like-btn';
@@ -388,20 +459,23 @@ import { showDataError } from "./firebase_data.js";
       finally { likeBtn.disabled = false; }
     });
 
-    const commentBtn = el('button', 'comment-btn', '💬 ' + countComments(post));
-    commentBtn.type = 'button';
-    commentBtn.classList.toggle('open', ui.open);
-    commentBtn.title = ui.open ? '댓글 닫기' : '댓글 보기';
-    commentBtn.addEventListener('click', function () {
-      ui.open = !ui.open;
-      if (ui.open) ui.visible = COMMENT_PAGE_SIZE; // 열 때마다 최근 n개부터 보여줌
-      ui.replyTo = null;
-      refreshCard();
-    });
-
     footer.appendChild(likeBtn);
-    footer.appendChild(document.createTextNode(' · '));
-    footer.appendChild(commentBtn);
+    if (opts.detail) {
+      // 댓글 수는 아래 "댓글 N" 제목에 나오므로 여기서는 보여주지 않음
+    } else {
+      footer.appendChild(document.createTextNode(' · '));
+      const commentBtn = el('button', 'comment-btn', '💬 ' + countComments(post));
+      commentBtn.type = 'button';
+      commentBtn.classList.toggle('open', ui.open);
+      commentBtn.title = ui.open ? '댓글 닫기' : '댓글 보기';
+      commentBtn.addEventListener('click', function () {
+        ui.open = !ui.open;
+        if (ui.open) ui.visible = COMMENT_PAGE_SIZE; // 열 때마다 최근 n개부터 보여줌
+        ui.replyTo = null;
+        refreshCard();
+      });
+      footer.appendChild(commentBtn);
+    }
     card.appendChild(footer);
 
     // 댓글창 (열려 있을 때만)
@@ -425,6 +499,14 @@ import { showDataError } from "./firebase_data.js";
     return card;
   }
 
+  // 점 세 개 메뉴: 바깥을 누르거나 Esc를 누르면 닫힘 (한 번만 등록)
+  document.addEventListener('click', function () {
+    document.querySelectorAll('.menu-list.open').forEach(function (m) { m.classList.remove('open'); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') document.querySelectorAll('.menu-list.open').forEach(function (m) { m.classList.remove('open'); });
+  });
+
   window.MD = {
     CATEGORY_LABEL: CATEGORY_LABEL,
     COMMENT_PAGE_SIZE: COMMENT_PAGE_SIZE,
@@ -444,7 +526,11 @@ import { showDataError } from "./firebase_data.js";
     timeAgo: timeAgo,
     formatSize: formatSize,
     profileUrl: profileUrl,
+    postTitle: postTitle,
+    postUrl: postUrl,
+    formatDate: formatDate,
     renderUserArea: renderUserArea,
+    renderPostRow: renderPostRow,
     renderPostCard: renderPostCard
   };
 })();

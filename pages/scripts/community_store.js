@@ -3,7 +3,7 @@ import { currentUser, requireUser, ensureProfile, logout, showDataError } from "
 import { storeAttachments } from "./local_files.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 import {
-  collection, doc, setDoc, addDoc, onSnapshot, runTransaction, serverTimestamp
+  collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
 const cache = { posts: [], comments: [], postLikes: [], follows: [], publicProfiles: [] };
@@ -72,14 +72,24 @@ export async function toggleLike(postId) {
   });
 }
 
-export async function createPost(category, text, files) {
+export async function createPost(category, text, files, title = "") {
   const user = requireUser();
   if (!CATEGORY_LABEL[category] || !text.trim() || text.length > 10000) throw new Error("카테고리와 내용을 확인해 주세요. 내용은 10,000자까지 입력할 수 있어요.");
+  title = (title || "").trim();
+  if (title.length > 100) throw new Error("제목은 100자까지 입력할 수 있어요.");
   if (files.length > 3 || files.some(file => file.size > 5 * 1024 * 1024)) throw new Error("첨부파일은 5MB 이하, 최대 3개까지 보관할 수 있어요.");
   const ref = doc(collection(db, "posts"));
   const metadata = await storeAttachments(user.uid, ref.id, files);
-  await setDoc(ref, { authorUid: user.uid, category, text: text.trim(), files: metadata, createdAt: serverTimestamp() });
+  const data = { authorUid: user.uid, category, text: text.trim(), files: metadata, createdAt: serverTimestamp() };
+  if (title) data.title = title; // 제목이 없는 예전 글과 호환되도록 있을 때만 저장
+  await setDoc(ref, data);
   return ref.id;
+}
+
+// 내 글 삭제 (규칙상 작성자만 삭제 가능). 달린 댓글은 글이 사라지면 화면에 나오지 않는다.
+export async function deletePost(postId) {
+  requireUser();
+  await deleteDoc(doc(db, "posts", postId));
 }
 
 export async function addComment(postId, unused, text) {

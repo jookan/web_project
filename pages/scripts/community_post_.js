@@ -10,7 +10,10 @@ MD.ready.then(function () {
   const backLink = document.getElementById('backLink');
   const userArea = document.getElementById('userArea');
   const id = new URLSearchParams(window.location.search).get('id');
-  let lastCategory = 'following';
+  // 목록에서 넘어온 탭(?from=all 등)이 있으면 그 탭으로, 없으면 글의 카테고리 탭으로 돌아간다.
+  const fromTab = new URLSearchParams(window.location.search).get('from');
+  const validFrom = ['all', 'following', 'song', 'sheet', 'free'].indexOf(fromTab) >= 0 ? fromTab : '';
+  let lastCategory = validFrom || 'all';
   let deleted = false;
 
   MD.renderUserArea(userArea);
@@ -29,8 +32,8 @@ MD.ready.then(function () {
       return;
     }
     emptyMsg.classList.remove('show');
-    lastCategory = post.category;
-    backLink.href = 'community.html?tab=' + post.category;
+    lastCategory = validFrom || post.category;
+    backLink.href = 'community.html?tab=' + lastCategory;
     document.title = MD.postTitle(post) + ' - Ambient';
 
     // 댓글 입력 중에 화면이 다시 그려져도 입력칸 내용은 MD 쪽에서 보관한다.

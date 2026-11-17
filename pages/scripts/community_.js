@@ -40,8 +40,7 @@ MD.ready.then(function () {
         ? '아직 글이 없어요. 첫 글을 남겨보세요!'
         : '아직 이 카테고리에 글이 없어요. 첫 글을 남겨보세요!';
 
-    //팔로잉 탭에서는 글쓰기 버튼을 숨기고, 카테고리 탭에서는 해당 카테고리가 선택된 채로 글쓰기 페이지로 이동 (전체글 탭은 카테고리를 고르게 함)
-    writeFab.classList.toggle('hidden', currentTab === 'following');
+    //글쓰기 버튼은 모든 탭에서 보인다. 카테고리 탭에서는 해당 카테고리가 선택된 채로, 전체글/팔로잉 탭에서는 카테고리를 직접 고르게 글쓰기 페이지로 이동
     writeFab.href = (currentTab === 'all' || currentTab === 'following')
       ? 'community_write.html'
       : 'community_write.html?category=' + currentTab;

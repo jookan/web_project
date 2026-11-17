@@ -73,6 +73,7 @@ nav.tabs a.active {
   border-radius: 28px;
   text-decoration: none;
   box-shadow: 0 4px 14px rgba(8, 6, 20, 0.6);
+  z-index: 20; /* 목록(page-shell) 위에 항상 보이도록 */
 }
 .fab:hover { filter: brightness(1.15); }
 

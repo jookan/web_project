@@ -17,6 +17,29 @@
 로그인과 시작 화면의 HTML에는 스크립트 경로만 두고 실행 코드는 위 파일에서 관리합니다.
 화면의 접근 검사와 별도로 `firestore.rules`에서 실제 데이터 접근 권한을 검사합니다.
 
+## 음악 디깅 기능
+
+HTML은 `digging.js` 하나를 `type="module"`로 불러온다. 나머지는 `digging/` 폴더의 모듈이다.
+기능별 동작·예외·데이터는 [DIGGING_SPEC.md](../../DIGGING_SPEC.md)에 정리했다.
+
+| 파일 | 역할 |
+| --- | --- |
+| `digging.js` | 시작점. 계정 저장소 열기, 화면 그리기(플레이리스트·추천 카드·검색), 이벤트 연결 |
+| `digging/config.js` | API 주소, 추천 곡 수 등 조절값, 브라우저 저장 키, 장르 사전 |
+| `digging/utils.js` | 곡 객체 생성(`makeSong`), 제목 정리, 장르 합치기, 저장소 읽기·쓰기 등 작은 함수 |
+| `digging/api.js` | API 키 보관(UID별 브라우저), Last.fm·MusicBrainz·YouTube 호출, 임베드 가능 확인 |
+| `digging/genres.js` | YouTube 태그·Last.fm·MusicBrainz로 곡 장르 추출, 장르 캐시 |
+| `digging/playlist_store.js` | Aurora와 함께 쓰는 플레이리스트 저장소(만들기·이름 변경·삭제·담기·빼기) |
+| `digging/music_lookup.js` | 곡 검색, 재생 가능한 YouTube 영상 찾기, 곡 정보(앨범 자켓 등) |
+| `digging/recommend.js` | 장르 프로필 계산, 비슷한/다른 장르 고르기, 추천 곡 모으기 |
+| `digging/ui.js` | 요소 만들기, 알림(토스트), 페이지 안 대화창 |
+| `digging/song_dialog.js` | 곡 정보 창 (앨범 자켓·통계·한국어 소개) |
+| `digging/translate.js` | 곡 소개 한국어 번역(Last.fm 한국어 소개 → 브라우저 번역기 → MyMemory), 번역 캐시 |
+| `digging/legacy_migration.js` | 예전 디깅 곡을 Aurora 플레이리스트로 옮기기 |
+
+공부할 때는 `digging.js`의 `syncFromAurora()`부터 따라가면 된다.
+플레이리스트를 읽고(`playlist_store`) → 장르를 채우고(`genres`) → 추천을 받는(`recommend`) 순서다.
+
 ## 악보 기능
 
 HTML은 `sheet_functions.js` 하나를 `type="module"`로 불러온다.

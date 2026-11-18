@@ -98,6 +98,11 @@
 .song_stats dt { color: var(--fg3); }
 .song_stats dd { margin: 0; }
 .song_summary { margin: 14px 0 0; color: var(--fg2); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.song_note { margin: 6px 0 0; color: var(--fg3); font-size: 11px; }
+.song_original { margin-top: 8px; font-size: 12px; color: var(--fg3); }
+.song_original summary { cursor: pointer; width: max-content; }
+.song_original summary:hover { color: var(--fg2); }
+.song_original p { margin: 6px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
 .song_links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 13px; }
 .song_links a { color: #9ed0ff; text-decoration: none; }
 .song_links a:hover { text-decoration: underline; }

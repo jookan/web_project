@@ -174,6 +174,10 @@ web_programming/
 ├─ DIGGING_SPEC.md             # 음악 디깅 기능 명세
 ├─ firebase.json               # 규칙 파일 경로와 에뮬레이터 설정
 ├─ firestore.rules             # 서버에서 적용할 접근 규칙
+├─ docs/
+   ├─ 악보페이지.md
+   ├─ DB_CONNECTION.md
+   ├─ DIGGING_SPEC.md
 ├─ pages/
 │  ├─ *.html                   # 로그인·시작·커뮤니티·디깅·플레이어·악보
 │  ├─ scripts/                 # 기능별 ES 모듈과 외부 라이브러리

@@ -6,7 +6,7 @@
 .logout { height: 34px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--stroke-2); background: var(--glass-2); font-size: 13px; font-weight: 600; color: var(--fg2); transition: background .2s, color .2s; }
 .logout:hover { background: rgba(255,255,255,.14); color: var(--fg); }
 
-.stage { position: relative; z-index: 1; min-height: calc(100dvh - 80px); display: grid; place-content: center; justify-items: center; padding: 48px 28px 64px; gap: 34px; }
+.stage { position: relative; z-index: 1; min-height: calc(100dvh - 80px); display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; justify-items: center; padding: 48px 28px 64px; gap: 34px; }
 .hello { text-align: center; animation: rise .8s var(--ease) both; }
 .hello small { display: inline-block; margin-bottom: 12px; padding: 5px 13px; border-radius: 99px; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #ffb08f; background: rgba(255,138,92,.14); }
 .hello h1 { margin: 0; font-size: clamp(30px, 4.6vw, 48px); letter-spacing: -.04em; line-height: 1.12; font-weight: 800; }
@@ -14,7 +14,7 @@
 .hello p { margin: 12px 0 0; color: var(--fg2); font-size: clamp(15px, 1.6vw, 17.5px); }
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
 
-.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; width: min(1140px, 100%); }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; width: min(1440px, 100%); }
 .card { --i: 0; position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; border-radius: 28px; overflow: hidden; text-decoration: none; color: inherit; cursor: pointer;
   background: var(--glass); border: 1px solid var(--stroke); backdrop-filter: blur(26px) saturate(1.4); box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
   animation: rise .8s var(--ease) both; animation-delay: calc(.12s + var(--i) * .1s);
@@ -33,6 +33,28 @@
 .card p { margin: 0; color: var(--fg2); font-size: 14.5px; line-height: 1.65; }
 .cta { margin-top: auto; padding-top: 10px; font-weight: 700; font-size: 14.5px; color: var(--fg3); display: inline-flex; align-items: center; gap: 6px; }
 .card.live .cta { color: #fff; } .card.live .cta::after { content: "→"; transition: transform .3s var(--ease); } .card.live:hover .cta::after { transform: translateX(5px); }
+
+.digging-preview {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at 24% 80%, #6d315a, transparent 62%), linear-gradient(145deg, #342252, #151120 72%);
+}
+.digging-record {
+  width: 54%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: rotate(-18deg);
+  background: conic-gradient(from 20deg, transparent, #bdadf244 18%, transparent 33% 48%, #ff9b9c44 62%, transparent 75%),
+    repeating-radial-gradient(circle closest-side, #211b2c 0 3px, #342b40 4px 5px);
+  box-shadow: 0 14px 38px #0a0710aa;
+}
+.digging-record::before {
+  content: "";
+  position: absolute;
+  inset: 33%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #211b2c 0 8%, transparent 10%), linear-gradient(135deg, #ffb17a, #ff6f91 53%, #8f7bff);
+}
 
 .comm { padding: 16px; display: flex; flex-direction: column; gap: 10px; height: 100%; background: linear-gradient(160deg, #181322, #0e1119); }
 .chips { display: flex; gap: 6px; } .chips span { font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 99px; background: rgba(255,255,255,.07); color: var(--fg3); }
@@ -64,7 +86,13 @@
 .card.live:hover .shot { transform: scale(1.05); }
 .shot::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(8,8,11,.55)); }
 
-@media (max-width: 980px) {
+@media (min-width: 1201px) {
+  .live-pill { position: static; order: -1; align-self: flex-end; }
+}
+@media (max-width: 1200px) {
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(900px, 100%); }
+}
+@media (max-width: 800px) {
   .cards { grid-template-columns: 1fr; width: min(460px, 100%); }
   .stage { padding-top: 92px; padding-bottom: 48px; gap: 26px; }
   .preview { aspect-ratio: 4 / 3.4; }

@@ -39,8 +39,9 @@ import { showDataError } from "./firebase_data.js";
     return pad(d.getFullYear() % 100) + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + '.';
   }
 
-  function postUrl(id) {
-    return 'community_post.html?id=' + encodeURIComponent(id);
+  // from: 글을 열기 전에 보던 목록 탭 (상세 화면의 "목록으로"가 그 탭으로 돌아가게 함)
+  function postUrl(id, from) {
+    return 'community_post.html?id=' + encodeURIComponent(id) + (from ? '&from=' + encodeURIComponent(from) : '');
   }
 
   function profileUrl(name) {
@@ -310,13 +311,13 @@ import { showDataError } from "./firebase_data.js";
   }
 
   // ---------- 목록의 글 한 줄 (제목 + 글쓴이·날짜, 오른쪽에 댓글 수) ----------
-  // opts.showCategory: 카테고리가 섞여 있는 목록(팔로잉, 프로필)에서 카테고리 이름을 같이 표시
+  // opts.showCategory: 카테고리가 섞여 있는 목록(전체글, 팔로잉, 프로필)에서 카테고리 이름을 같이 표시
   function renderPostRow(post, opts) {
     opts = opts || {};
     const row = el('div', 'post-row');
     const main = el('div', 'row-main');
     const title = el('a', 'row-title', postTitle(post));
-    title.href = postUrl(post.id);
+    title.href = postUrl(post.id, opts.from);
     main.appendChild(title);
     const meta = el('div', 'row-meta');
     meta.appendChild(nameLink(post.author, post.authorUid));
@@ -326,7 +327,7 @@ import { showDataError } from "./firebase_data.js";
     row.appendChild(main);
 
     const count = el('a', 'row-count');
-    count.href = postUrl(post.id);
+    count.href = postUrl(post.id, opts.from);
     count.appendChild(el('strong', '', String(countComments(post))));
     count.appendChild(el('span', '', '댓글'));
     row.appendChild(count);

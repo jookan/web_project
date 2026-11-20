@@ -1,4 +1,22 @@
-/* ---------- 색상 모음 ---------- */
+/* ==========================================================
+   커뮤니티 화면 스타일 (community_.css)
+   community.html / community_post.html / community_write.html / community_profile.html 이 같이 사용
+
+   [구성]
+   1. 색상 모음
+   2. 기본 설정
+   3. 페이지 레이아웃 (여백, 제목, 고정 탭)
+   4. 탭 / 하단 글쓰기 버튼
+   5. 글 목록 (제목 + 글쓴이·날짜, 오른쪽에 댓글 수)
+   6. 글 카드 공통 (아바타, 글쓴이, 태그, 팔로우, 좋아요, 첨부)
+   7. 댓글 / 답글
+   8. 글 상세
+   9. 점 세 개(⋮) 더보기 메뉴
+   10. 글쓰기 페이지
+   11. 프로필 페이지
+   ========================================================== */
+
+/* ---------- 1. 색상 모음 ---------- */
 :root {
   --bg-top: #151226;        /* 배경 위쪽 (남보라) */
   --bg-bottom: #0e0d16;     /* 배경 아래쪽 */
@@ -19,6 +37,7 @@
   --error: #ff8aa0;         /* 안내/오류 문구 */
 }
 
+/* ---------- 2. 기본 설정 ---------- */
 body {
   background-color: var(--bg-bottom);
   background-image: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
@@ -38,7 +57,31 @@ header nav a { color: var(--text-sub); margin-right: 12px; text-decoration: none
 
 .hidden { display: none !important; }
 
-/* ---------- 탭 ---------- */
+.empty-msg {
+  color: var(--text-sub);
+  font-size: 14px;
+  text-align: center;
+  padding: 30px 0;
+  display: none;
+}
+.empty-msg.show { display: block; }
+
+/* ---------- 3. 페이지 레이아웃 (양옆 여백, 제목/탭은 왼쪽 정렬) ---------- */
+.community-page .page-shell { width: min(700px, calc(100% - 200px)); padding-top: 36px; }
+.community-page .page-shell:has(.post-page) { padding-top: 14px; } /* 글 상세는 위로 바짝 */
+.community-page .page-heading { text-align: left; margin-bottom: 0; }
+.community-page .page-heading h1 {
+  margin: 0 0 20px;
+  color: #ffb08f;
+  font-size: clamp(26px, 3.2vw, 32px);
+  font-weight: 750;
+  letter-spacing: .1em;
+}
+@media (max-width: 640px) {
+  .community-page .page-shell { width: calc(100% - 48px); }
+}
+
+/* ---------- 4. 탭 / 하단 글쓰기 버튼 ---------- */
 nav.tabs {
   display: flex;
   gap: 10px;
@@ -59,8 +102,27 @@ nav.tabs a.active {
   color: var(--accent-text);
   font-weight: bold;
 }
+/* 커뮤니티 페이지의 탭: 위아래 얇은 줄, 왼쪽 정렬 */
+.community-page nav.tabs {
+  justify-content: flex-start;
+  margin: 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--card-border);
+  border-bottom: 1px solid var(--card-border);
+}
+/* 글 목록 화면: 스크롤하면 제목(COMMUNITY)은 올라가 사라지고 카테고리 버튼은 화면 맨 위에 고정 */
+.community-page nav.tabs:not(.profile-tabs) { position: sticky; top: 0; z-index: 4; }
+.community-page nav.tabs:not(.profile-tabs)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0; bottom: 0;
+  left: 50%; width: 100vw; margin-left: -50vw;
+  background: transparent; /* 색을 깔지 않고 흐림 효과만 써서 배경색과 자연스럽게 이어지게 함 */
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
 
-/* ---------- 하단 글쓰기 버튼 ---------- */
 .fab {
   position: fixed;
   right: 24px;
@@ -73,10 +135,55 @@ nav.tabs a.active {
   border-radius: 28px;
   text-decoration: none;
   box-shadow: 0 4px 14px rgba(8, 6, 20, 0.6);
+  z-index: 20; /* 목록(page-shell) 위에 항상 보이도록 */
 }
 .fab:hover { filter: brightness(1.15); }
 
-/* ---------- 게시글 카드 ---------- */
+/* ---------- 5. 글 목록 (제목 + 글쓴이·날짜, 오른쪽에 댓글 수) ---------- */
+.post-table { border-top: 1px solid var(--card-border); }
+.community-page .post-table { border-top: none; } /* 탭 아래 줄과 겹치지 않게 */
+.post-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 4px;
+  border-bottom: 1px solid var(--card-border);
+}
+.row-main { flex: 1; min-width: 0; }
+.row-title {
+  display: block;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.4;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-title:hover { text-decoration: underline; }
+.row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--text-sub); }
+.row-meta .author-name { font-weight: normal; font-size: 13px; color: var(--text-sub); }
+.row-meta .author-name:hover { color: var(--accent-text); }
+.row-cat { background-color: var(--tag-bg); color: var(--tag-text); font-size: 12px; padding: 2px 8px; border-radius: 8px; }
+.row-count {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background-color: var(--chip);
+  border-radius: 14px;
+  color: var(--text-sub);
+  font-size: 12px;
+  text-decoration: none;
+}
+.row-count strong { color: var(--text); font-size: 15px; }
+.row-count:hover { background-color: var(--btn-bg); }
+
+/* ---------- 6. 글 카드 공통 (아바타, 글쓴이, 태그, 팔로우, 좋아요, 첨부) ---------- */
 .post-card {
   background-color: var(--card);
   border: 1px solid var(--card-border);
@@ -109,6 +216,7 @@ a.avatar:hover { filter: brightness(1.12); }
   height: 72px;
   font-size: 30px;
 }
+.avatar.small { width: 26px; height: 26px; font-size: 12px; color: #17141f; } /* 댓글용 */
 .author-name {
   color: #fff;
   font-weight: bold;
@@ -139,7 +247,6 @@ a.avatar:hover { filter: brightness(1.12); }
   color: var(--accent-text);
   font-weight: bold;
 }
-
 .like-btn {
   background: none;
   border: none;
@@ -152,18 +259,11 @@ a.avatar:hover { filter: brightness(1.12); }
   color: var(--like);
   font-weight: bold;
 }
-
-/* ---------- 첨부 파일 ---------- */
 .attachments {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 8px 0;
-}
-.attach-img {
-  max-width: 100%;
-  max-height: 240px;
-  border-radius: 10px;
 }
 .attach-chip {
   background-color: var(--tag-bg);
@@ -173,124 +273,7 @@ a.avatar:hover { filter: brightness(1.12); }
   border-radius: 12px;
 }
 
-/* ---------- 빈 화면 안내 ---------- */
-.empty-msg {
-  color: var(--text-sub);
-  font-size: 14px;
-  text-align: center;
-  padding: 30px 0;
-  display: none;
-}
-.empty-msg.show { display: block; }
-
-/* ---------- 글쓰기 페이지 ---------- */
-.write-page {
-  max-width: 640px;
-  margin: 0 auto;
-}
-.write-page label {
-  display: block;
-  margin: 18px 0 6px;
-  font-size: 14px;
-  color: #a29fb3;
-}
-.write-page select,
-.write-page textarea {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--card-border);
-  background-color: var(--card);
-  color: var(--text);
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: 14px;
-}
-.write-page input[type="file"] { color: #a29fb3; font-size: 13px; }
-.file-list { list-style: none; padding: 0; margin: 10px 0 0; }
-.file-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  padding: 8px 12px;
-  margin-bottom: 6px;
-  font-size: 13px;
-  color: var(--btn-text);
-}
-.file-remove {
-  background: none;
-  border: none;
-  color: var(--text-sub);
-  cursor: pointer;
-  font-size: 14px;
-}
-.write-hint { color: var(--error); font-size: 13px; min-height: 16px; margin: 10px 0 0; }
-.write-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
-}
-.write-actions button,
-.write-actions .btn-cancel {
-  padding: 10px 22px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  text-decoration: none;
-  border: none;
-}
-.write-actions button { background-color: var(--main-btn-bg); color: var(--main-btn-text); }
-.write-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
-.write-actions .btn-cancel { background-color: var(--btn-bg); color: var(--btn-text); }
-
-/* ---------- 프로필 페이지 ---------- */
-.back-link { color: var(--text-sub); text-decoration: none; font-size: 14px; }
-.profile-head {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  background-color: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  padding: 20px;
-}
-.profile-info { flex: 1 1 200px; }
-.profile-info h2 { margin: 0 0 8px; }
-.me-badge {
-  display: inline-block;
-  background-color: var(--accent-bg);
-  color: var(--accent-text);
-  font-size: 12px;
-  padding: 2px 10px;
-  border-radius: 10px;
-  vertical-align: middle;
-}
-.profile-stats {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  font-size: 13px;
-  color: var(--text-sub);
-}
-.profile-stats strong { color: var(--text); }
-.chip-list { display: flex; flex-wrap: wrap; gap: 10px; }
-.user-chip {
-  background-color: var(--chip);
-  color: var(--text);
-  padding: 8px 16px;
-  border-radius: 20px;
-  text-decoration: none;
-  font-size: 14px;
-}
-.user-chip:hover { background-color: var(--btn-bg); }
-
-/* ---------- 댓글 ---------- */
+/* ---------- 7. 댓글 / 답글 ---------- */
 .comment-btn {
   background: none;
   border: none;
@@ -326,7 +309,6 @@ a.avatar:hover { filter: brightness(1.12); }
 .comment-empty { color: var(--text-sub); font-size: 13px; margin: 0 0 12px; }
 
 .comment, .reply { display: flex; gap: 10px; margin-bottom: 16px; }
-.avatar.small { width: 26px; height: 26px; font-size: 12px; color: #17141f; }
 .comment-body { flex: 1; min-width: 0; }
 .comment-line { font-size: 13px; }
 .comment-line .author-name { font-size: 13px; font-weight: 600; }
@@ -379,142 +361,32 @@ a.avatar:hover { filter: brightness(1.12); }
 .cancel-btn { background-color: var(--btn-bg); color: var(--btn-text); }
 .form-hint { color: var(--error); font-size: 12px; min-height: 14px; margin: 4px 0 0 4px; }
 
-/* ---------- 글 목록 (제목 + 글쓴이·날짜, 오른쪽에 댓글 수) ---------- */
-.post-table { border-top: 1px solid var(--card-border); }
-.post-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 18px 4px;
-  border-bottom: 1px solid var(--card-border);
-}
-.row-main { flex: 1; min-width: 0; }
-.row-title {
-  display: block;
-  color: var(--text);
-  font-size: 16px;
-  line-height: 1.4;
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row-title:hover { text-decoration: underline; }
-.row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--text-sub); }
-.row-meta .author-name { font-weight: normal; font-size: 13px; color: var(--text-sub); }
-.row-meta .author-name:hover { color: var(--accent-text); }
-.row-cat { background-color: var(--tag-bg); color: var(--tag-text); font-size: 12px; padding: 2px 8px; border-radius: 8px; }
-.row-count {
-  flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  background-color: var(--chip);
-  border-radius: 14px;
-  color: var(--text-sub);
-  font-size: 12px;
-  text-decoration: none;
-}
-.row-count strong { color: var(--text); font-size: 15px; }
-.row-count:hover { background-color: var(--btn-bg); }
-
-/* ---------- 글 상세 ---------- */
+/* ---------- 8. 글 상세 (카드 상자 없이 배경 위에 바로 표시) ---------- */
 .post-page { max-width: 760px; }
-.post-detail .post-title { font-size: 24px; margin: 4px 0 16px; line-height: 1.35; word-break: break-word; }
-.post-detail .post-content { font-size: 15px; line-height: 1.8; margin: 18px 0; min-height: 80px; }
-.post-detail .post-meta { display: flex; align-items: center; gap: 4px; }
-.comment-count { font-size: 13px; }
-
-/* ---------- 글쓰기: 제목 입력 ---------- */
-.write-page input[type="text"] {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--card-border);
-  background-color: var(--card);
-  color: var(--text);
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: 14px;
-}
-
-/* ---------- 커뮤니티 페이지 레이아웃 (양옆 여백, 제목/탭은 왼쪽 정렬, 위쪽 간격 최소) ---------- */
-.community-page .page-shell { width: min(700px, calc(100% - 200px)); padding-top: 36px; }
-.community-page .page-heading { text-align: left; margin-bottom: 0; }
-.community-page .page-heading h1 { margin: 0 0 20px; color: #ffb08f; font-size: clamp(26px, 3.2vw, 32px); font-weight: 750; letter-spacing: .1em; }
-.community-page nav.tabs { justify-content: flex-start; margin: 0; padding: 16px 0; border-top: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); }
-/* 글 목록 화면: 스크롤하면 제목(COMMUNITY)은 올라가 사라지고 카테고리 버튼은 화면 맨 위에 고정 */
-.community-page nav.tabs:not(.profile-tabs) { position: sticky; top: 0; z-index: 4; }
-.community-page nav.tabs:not(.profile-tabs)::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 0; bottom: 0;
-  left: 50%; width: 100vw; margin-left: -50vw;
-  background: transparent; /* 색을 깔지 않고 흐림 효과만 써서 배경색과 자연스럽게 이어지게 함 */
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
-}
-.community-page .post-table { border-top: none; }
-@media (max-width: 640px) {
-  .community-page .page-shell { width: calc(100% - 48px); }
-}
-
-/* ---------- 글쓰기 화면: 목록과 같은 왼쪽 줄, 보라색 파일 선택 버튼 ---------- */
-.community-page .write-page { max-width: none; margin: 0; }
-.community-page .write-page h2 { margin: 0 0 4px; padding: 16px 0; }
-.write-page label.file-btn {
-  display: inline-block;
-  margin: 0;
-  padding: 9px 18px;
-  background-color: var(--main-btn-bg);
-  color: var(--main-btn-text);
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: bold;
-  cursor: pointer;
-}
-.write-page label.file-btn:hover { filter: brightness(1.15); }
-.write-page .visually-hidden:focus + label.file-btn { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-
-/* ---------- 글 상세: 카드 상자 없이 배경 위에 바로 표시 ---------- */
+.post-page > p { margin: 0 0 24px; } /* "← 목록으로"와 제목 사이 간격 */
 .post-card.post-detail { background: none; border: none; border-radius: 0; padding: 0; margin: 0; }
 
-/* ---------- 글 상세: 위로 올리기, 글쓴이 영역 축소, 좋아요 버튼 키우기 ---------- */
-.community-page .page-shell:has(.post-page) { padding-top: 14px; }
-.post-page > p { margin: 0 0 10px; }
-.post-detail .post-title { font-size: 22px; margin: 0 0 12px; }
-.post-detail .post-header { gap: 8px; }
-.post-detail .post-header .avatar { width: 32px; height: 32px; font-size: 14px; }
-.post-detail .author-name { font-size: 14px; }
-.post-detail .post-header .post-meta { font-size: 12px; }
-.post-detail .post-header .post-tag { font-size: 11px; padding: 2px 8px; }
-.post-detail .follow-btn { padding: 5px 12px; font-size: 13px; }
-.post-detail .post-content { margin: 12px 0 14px; min-height: 40px; }
-.post-detail .post-meta { margin: 0 0 4px; }
-.post-detail .like-btn { font-size: 20px; padding: 8px 10px 8px 0; line-height: 1; }
-.post-detail .like-btn .like-count { font-size: 17px; }
-.post-detail .comment-head { margin-top: 4px; padding-top: 14px; }
+.post-detail .post-title { font-size: 22px; margin: 0 0 12px; line-height: 1.35; word-break: break-word; }
 
-/* ---------- 글 상세: 글쓴이 정보는 더 작게, 본문과는 얇은 줄로 구분 ---------- */
+/* 글쓴이 정보 줄: 작게, 본문과는 얇은 줄로 구분 */
 .post-detail .post-header { gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--card-border); }
 .post-detail .post-header .avatar { width: 26px; height: 26px; font-size: 12px; }
 .post-detail .author-name { font-size: 13px; }
 .post-detail .post-header .post-meta { font-size: 11px; line-height: 1.3; }
 .post-detail .post-header .post-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; }
 .post-detail .follow-btn { padding: 3px 10px; font-size: 12px; }
-.post-detail .post-content { margin: 16px 0 14px; }
 
-/* ---------- 글 상세: 본문 글자 조금 크게, 좋아요는 오른쪽 끝 (삭제 버튼은 왼쪽 끝) ---------- */
-.post-detail .post-content { font-size: 16px; line-height: 1.85; }
+.post-detail .post-content { font-size: 16px; line-height: 1.85; margin: 16px 0 14px; min-height: 40px; }
+
+/* 아래 줄: 좋아요 버튼은 오른쪽 끝 */
+.post-detail .post-meta { display: flex; align-items: center; gap: 4px; margin: 0 0 4px; }
 .post-detail .post-card-footer, .post-detail > .post-meta:last-of-type { justify-content: flex-end; }
-.post-detail .like-btn { padding-right: 0; padding-left: 10px; }
+.post-detail .like-btn { font-size: 20px; padding: 8px 0 8px 10px; line-height: 1; }
+.post-detail .like-btn .like-count { font-size: 17px; }
 
-/* ---------- 글 상세: 점 세 개(⋮) 더보기 메뉴 (내 글에만 표시) ---------- */
+.post-detail .comment-head { margin-top: 4px; }
+
+/* ---------- 9. 점 세 개(⋮) 더보기 메뉴 (내 글에만 표시) ---------- */
 .more-menu { position: relative; margin-left: auto; }
 .menu-btn {
   background: none;
@@ -555,4 +427,127 @@ a.avatar:hover { filter: brightness(1.12); }
   cursor: pointer;
 }
 .menu-item:hover { background-color: rgba(255, 255, 255, 0.07); color: var(--error); }
-.post-page > p { margin: 0 0 24px; }
+
+/* ---------- 10. 글쓰기 페이지 ---------- */
+.write-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+.community-page .write-page { max-width: none; margin: 0; } /* 목록과 같은 왼쪽 줄에 맞춤 */
+.community-page .write-page h2 { margin: 0 0 4px; padding: 16px 0; }
+.write-page label {
+  display: block;
+  margin: 18px 0 6px;
+  font-size: 14px;
+  color: #a29fb3;
+}
+.write-page input[type="text"],
+.write-page select,
+.write-page textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background-color: var(--card);
+  color: var(--text);
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 14px;
+}
+.write-page input[type="file"] { color: #a29fb3; font-size: 13px; }
+/* 파일 선택: 기본 입력칸은 숨기고 보라색 버튼(label)으로 대신 보여줌 */
+.write-page label.file-btn {
+  display: inline-block;
+  margin: 0;
+  padding: 9px 18px;
+  background-color: var(--main-btn-bg);
+  color: var(--main-btn-text);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.write-page label.file-btn:hover { filter: brightness(1.15); }
+.write-page .visually-hidden:focus + label.file-btn { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.file-list { list-style: none; padding: 0; margin: 10px 0 0; }
+.file-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--btn-text);
+}
+.file-remove {
+  background: none;
+  border: none;
+  color: var(--text-sub);
+  cursor: pointer;
+  font-size: 14px;
+}
+.write-hint { color: var(--error); font-size: 13px; min-height: 16px; margin: 10px 0 0; }
+.write-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+.write-actions button,
+.write-actions .btn-cancel {
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  border: none;
+}
+.write-actions button { background-color: var(--main-btn-bg); color: var(--main-btn-text); }
+.write-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.write-actions .btn-cancel { background-color: var(--btn-bg); color: var(--btn-text); }
+
+/* ---------- 11. 프로필 페이지 ---------- */
+.back-link { color: var(--text-sub); text-decoration: none; font-size: 14px; }
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 20px;
+}
+.profile-info { flex: 1 1 200px; }
+.profile-info h2 { margin: 0 0 8px; }
+.me-badge {
+  display: inline-block;
+  background-color: var(--accent-bg);
+  color: var(--accent-text);
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+.profile-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.profile-stats strong { color: var(--text); }
+.chip-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.user-chip {
+  background-color: var(--chip);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 14px;
+}
+.user-chip:hover { background-color: var(--btn-bg); }

@@ -110,6 +110,31 @@ export function renderPracticeSteps(score) {
             notifyPracticeChange();
         });
 
+        const stepBpmInput = document.createElement("input");
+        stepBpmInput.type = "number";
+        stepBpmInput.min = "1";
+        stepBpmInput.step = "any";
+        stepBpmInput.className = "short-input step-bpm-input";
+        stepBpmInput.value = step.bpm ?? "";
+        stepBpmInput.placeholder = score.practice.bpm;
+        stepBpmInput.title = "비워 두면 기본 BPM을 사용해요.";
+        stepBpmInput.setAttribute("aria-label", (index + 1) + "번째 단계 BPM (빈칸이면 기본 BPM)");
+        stepBpmInput.addEventListener("change", function () {
+            if (practiceControls.disabled || selectedScore !== score) return;
+            if (stepBpmInput.value === "" && !stepBpmInput.validity.badInput) {
+                delete step.bpm;
+            } else {
+                const bpm = Number(stepBpmInput.value);
+                if (!Number.isFinite(bpm) || bpm < 1) {
+                    stepBpmInput.value = step.bpm ?? "";
+                    return;
+                }
+                step.bpm = bpm;
+            }
+            updatePracticeSummary();
+            notifyPracticeChange();
+        });
+
         const removeButton = document.createElement("button");
         removeButton.type = "button";
         removeButton.className = "remove-step";
@@ -122,7 +147,7 @@ export function renderPracticeSteps(score) {
             notifyPracticeChange();
         });
 
-        row.append(order, pageInput, barsInput, removeButton);
+        row.append(order, pageInput, barsInput, stepBpmInput, removeButton);
         practiceSteps.appendChild(row);
     });
     updatePracticeSummary();
@@ -166,6 +191,9 @@ export function initializePracticeSettings(onChange = function () {}) {
             return;
         }
         selectedScore.practice.bpm = bpm;
+        practiceSteps.querySelectorAll(".step-bpm-input").forEach(function (input) {
+            input.placeholder = bpm;
+        });
         updatePracticeSummary();
         notifyPracticeChange();
     });

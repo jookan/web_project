@@ -7,10 +7,17 @@ let pageTimer = null;
 let progressTimer = null;
 let runNumber = 0;
 
-export function getStepDurationMs(practice, step) {
-    if (!Number.isFinite(practice.bpm) || practice.bpm < 1) {
+export function getStepBpm(practice, step) {
+    // 기존 저장 자료에는 단계별 BPM이 없으므로 기본 BPM을 사용한다.
+    const bpm = step.bpm ?? practice.bpm;
+    if (!Number.isFinite(bpm) || bpm < 1) {
         throw new Error("BPM은 1 이상의 숫자로 입력해 주세요.");
     }
+    return bpm;
+}
+
+export function getStepDurationMs(practice, step) {
+    const bpm = getStepBpm(practice, step);
     if (!Number.isInteger(practice.beatsPerBar) || practice.beatsPerBar < 1) {
         throw new Error("마디당 박 수는 1 이상의 정수로 입력해 주세요.");
     }
@@ -18,7 +25,7 @@ export function getStepDurationMs(practice, step) {
         throw new Error("각 단계의 마디 수는 1 이상의 정수로 입력해 주세요.");
     }
 
-    const duration = (60 / practice.bpm) * practice.beatsPerBar * step.bars * 1000;
+    const duration = (60 / bpm) * practice.beatsPerBar * step.bars * 1000;
     // setTimeout이 표현할 수 없는 값이 즉시 실행되는 것을 방지한다.
     if (!Number.isFinite(duration) || duration < 1 || duration > 2147483647) {
         throw new Error("단계의 연주 시간이 너무 짧거나 길어요. 설정값을 조정해 주세요.");
@@ -75,6 +82,11 @@ export async function startAutoTurn(score) {
             }
             return {
                 pageNumber: step.pageNumber,
+                practice: {
+                    bpm: getStepBpm(score.practice, step),
+                    beatsPerBar: score.practice.beatsPerBar,
+                    metronome: score.practice.metronome
+                },
                 duration: getStepDurationMs(score.practice, step)
             };
         });
@@ -109,7 +121,7 @@ async function playCurrentStep(currentRun) {
 
         // 페이지가 그려진 다음부터 해당 단계의 연주 시간을 센다.
         playback.deadline = performance.now() + step.duration;
-        notifyStepReady(playback.score.practice, step.duration);
+        notifyStepReady(step.practice, step.duration);
         reportProgress();
         pageTimer = setTimeout(function () {
             if (!playback || currentRun !== runNumber) return;

@@ -138,5 +138,4 @@ function scheduleResize() {
 
 export function observeViewerResize() {
     new ResizeObserver(scheduleResize).observe(sheet);
-    window.addEventListener("resize", scheduleResize);
 }

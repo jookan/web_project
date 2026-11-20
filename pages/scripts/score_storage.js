@@ -6,10 +6,9 @@ import { collection, doc, getDocs, setDoc, serverTimestamp } from "https://www.g
 const status = document.querySelector("#storage-status");
 let database, owner = null;
 const records = new Map();
+// 악보별 마지막 변경은 500ms 기다리고, 실제 DB 쓰기는 순서대로 실행한다.
 const waiting = new Map();
 let writes = Promise.resolve();
-let pendingCloud = 0;
-const failedCloud = new Set();
 
 function openDatabase(name) {
     return new Promise((resolve, reject) => {
@@ -66,8 +65,9 @@ async function syncMetadata(record) {
         practice: record.practice, updatedAt: serverTimestamp()
     });
     if (records.get(record.id) === record) {
-        record.cloudDirty = false;
-        await putRecord(record);
+        await putRecord({ ...record, cloudDirty: false });
+        // 로컬 반영까지 끝난 뒤에만 완료 처리하고, 그 사이 생긴 새 변경은 유지한다.
+        if (records.get(record.id) === record) record.cloudDirty = false;
     }
 }
 
@@ -76,26 +76,38 @@ function commit(id) {
     if (!entry) return writes;
     clearTimeout(entry.timer);
     waiting.delete(id);
-    pendingCloud++;
     writes = writes.catch(() => {}).then(() => syncMetadata(entry.record));
     writes.then(() => {
-        pendingCloud--;
-        failedCloud.delete(id);
-        if (!waiting.size && !pendingCloud && !failedCloud.size) message("PDF 원본은 이 브라우저에, 악보 정보와 설정은 계정에 저장했어요.");
-    }, error => {
-        pendingCloud--;
-        failedCloud.add(id);
-        showStorageError(error);
-    });
+        // 대기·실패 여부를 별도로 중복 관리하지 않고 최신 자료의 저장 상태를 확인한다.
+        const unsaved = Array.from(records.values()).some(record => record.cloudDirty);
+        if (!unsaved) message("PDF 원본은 이 브라우저에, 악보 정보와 설정은 계정에 저장했어요.");
+    }, showStorageError);
     return writes;
 }
 
-export function flushScoreWrites() {
+function flushScoreWrites() {
     for (const id of Array.from(waiting.keys())) commit(id);
     return writes;
 }
 
 export function savedScore(id) { return records.get(id); }
+
+async function loadCloudScores() {
+    const snapshot = await getDocs(collection(db, "users", owner.uid, "scores"));
+    for (const item of snapshot.docs) {
+        const data = item.data();
+        const local = records.get(data.scoreId);
+        // 아직 DB에 반영하지 못한 로컬 설정은 서버 값으로 덮어쓰지 않는다.
+        if (local?.cloudDirty) continue;
+        records.set(data.scoreId, {
+            ...local, id: data.scoreId, fileName: data.fileName,
+            pageNumber: data.pageNumber, practice: data.practice
+        });
+    }
+    for (const record of records.values()) {
+        if (record.file && record.cloudDirty) await syncMetadata(record);
+    }
+}
 
 export async function openScoreStorage() {
     owner = await currentUser();
@@ -106,16 +118,7 @@ export async function openScoreStorage() {
     } catch (error) { showStorageError(error); }
     if (owner) {
         try {
-            const snapshot = await getDocs(collection(db, "users", owner.uid, "scores"));
-            for (const item of snapshot.docs) {
-                const data = item.data();
-                const local = records.get(data.scoreId);
-                if (!local?.cloudDirty) records.set(data.scoreId, {
-                    ...local, id: data.scoreId, fileName: data.fileName, fileSize: data.fileSize,
-                    lastModified: data.lastModified, pageNumber: data.pageNumber, practice: data.practice
-                });
-            }
-            for (const record of records.values()) if (record.file && record.cloudDirty) await syncMetadata(record);
+            await loadCloudScores();
             message("계정의 악보 설정을 불러왔어요. 다른 기기에서는 같은 PDF 원본을 선택해 주세요.");
         } catch (error) { showStorageError(error); }
     } else message("게스트의 PDF와 설정은 이 브라우저에만 저장돼요.");

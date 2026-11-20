@@ -9,7 +9,7 @@ import {
     setPracticeDisabled, highlightPracticeStep
 } from "./practice_settings.js";
 import {
-    initializeAutoTurn, startAutoTurn, stopAutoTurn, isAutoTurning
+    initializeAutoTurn, startAutoTurn, stopAutoTurn, isAutoTurning, getStepBpm
 } from "./auto_turn.js";
 
 const scoreTitle = document.querySelector("#score-title");
@@ -110,7 +110,9 @@ startButton.addEventListener("click", async function () {
     updateButtons();
     try {
         if (score.practice.metronome) {
-            if (score.practice.bpm > 600) throw new Error("메트로놈은 BPM 600 이하에서 사용할 수 있어요.");
+            if (score.practice.steps.some(step => getStepBpm(score.practice, step) > 600)) {
+                throw new Error("메트로놈은 각 단계의 BPM이 600 이하일 때 사용할 수 있어요.");
+            }
             await prepareMetronome();
         }
         if (request === startRequest && score === activeScore && !loading && !document.hidden) await startAutoTurn(score);

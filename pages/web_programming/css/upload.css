@@ -278,7 +278,7 @@ h2 {
 
 .practice-step-head, .practice-step {
     display: grid;
-    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 26px;
+    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) 22px;
     align-items: center;
     gap: 6px;
     padding: 5px;
@@ -313,6 +313,18 @@ h2 {
     width: 100%;
     padding: 6px 2px;
     font-size: 13px;
+}
+
+/* 좁은 사이드바에서도 페이지·마디·BPM 숫자가 가려지지 않게 한다. */
+#practice-steps input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+#practice-steps input::-webkit-inner-spin-button,
+#practice-steps input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .remove-step {

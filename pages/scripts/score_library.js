@@ -9,6 +9,15 @@ const sheetList = document.querySelector(".button-group");
 const libraryEmpty = document.querySelector(".library-empty");
 const scores = [];
 
+function isValidPractice(practice, pageCount) {
+    return practice && Number.isFinite(practice.bpm) && practice.bpm >= 1
+        && Number.isInteger(practice.beatsPerBar) && practice.beatsPerBar >= 1
+        && Array.isArray(practice.steps) && practice.steps.every(step =>
+            Number.isInteger(step.pageNumber) && step.pageNumber >= 1 && step.pageNumber <= pageCount
+            && Number.isInteger(step.bars) && step.bars >= 1
+            && (step.bpm == null || (Number.isFinite(step.bpm) && step.bpm >= 1)));
+}
+
 async function addScore(file, onSelectScore, saved = null) {
     const legacyId = JSON.stringify([file.name, file.size, file.lastModified]);
     let id = saved?.id;
@@ -26,17 +35,12 @@ async function addScore(file, onSelectScore, saved = null) {
     button.type = "button";
     button.textContent = file.name;
     const practice = saved?.practice;
-    const valid = practice && Number.isFinite(practice.bpm) && practice.bpm >= 1
-        && Number.isInteger(practice.beatsPerBar) && practice.beatsPerBar >= 1
-        && Array.isArray(practice.steps) && practice.steps.every(step =>
-            Number.isInteger(step.pageNumber) && step.pageNumber >= 1 && step.pageNumber <= pdf.numPages
-            && Number.isInteger(step.bars) && step.bars >= 1);
     const pageNumber = saved?.pageNumber;
     const score = {
         id,
-        file, name: file.name, size: file.size, lastModified: file.lastModified, pdf, button,
+        file, name: file.name, pdf, button,
         pageNumber: Number.isInteger(pageNumber) && pageNumber >= 1 && pageNumber <= pdf.numPages ? pageNumber : 1,
-        practice: valid ? practice : createPracticeSettings(pdf.numPages)
+        practice: isValidPractice(practice, pdf.numPages) ? practice : createPracticeSettings(pdf.numPages)
     };
     button.addEventListener("click", () => onSelectScore(score));
     sheetList.querySelector('[data-missing-id="' + CSS.escape(id) + '"]')?.remove();
@@ -106,15 +110,6 @@ export function initializeScoreLibrary(onSelectScore, onLoadingChange, onBeforeF
 
         if (!/\.pdf$/i.test(file.name)) {
             showStatus("PDF 파일을 선택해 주세요.", true);
-            sheetFile.value = "";
-            return;
-        }
-
-        const existingScore = scores.find(function (score) {
-            return score.name === file.name && score.size === file.size && score.lastModified === file.lastModified;
-        });
-        if (existingScore) {
-            await onSelectScore(existingScore);
             sheetFile.value = "";
             return;
         }

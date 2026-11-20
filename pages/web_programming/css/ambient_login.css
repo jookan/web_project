@@ -52,7 +52,7 @@
   transform: translateX(calc(var(--t) * 100%)); transition: transform .5s var(--spring); }
 .head h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.03em; }
 .head p { margin: 0 0 22px; color: var(--fg2); font-size: 14.5px; line-height: 1.6; }
-form { display: grid; gap: 15px; }
+.login-actions { display: grid; gap: 15px; }
 .field { display: grid; gap: 7px; }
 .field label { font-size: 13px; font-weight: 600; color: var(--fg2); }
 .input { position: relative; }

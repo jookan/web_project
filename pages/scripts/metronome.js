@@ -1,7 +1,7 @@
 ﻿// 자동 넘기기의 각 단계가 시작될 때 박자를 들려준다.
 let audioContext;
 let timer;
-let sounds = new Set();
+const sounds = new Set();
 let run = 0;
 
 // 브라우저의 소리 재생 제한 때문에 버튼 클릭 안에서 호출한다.
@@ -21,6 +21,23 @@ export function stopMetronome() {
     sounds.clear();
 }
 
+function playBeat(when, accented) {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.frequency.value = accented ? 1000 : 700;
+    gain.gain.setValueAtTime(0.12, when);
+    gain.gain.exponentialRampToValueAtTime(0.001, when + 0.045);
+    oscillator.connect(gain).connect(audioContext.destination);
+    sounds.add(oscillator);
+    oscillator.onended = function () {
+        sounds.delete(oscillator);
+        oscillator.disconnect();
+        gain.disconnect();
+    };
+    oscillator.start(when);
+    oscillator.stop(when + 0.05);
+}
+
 export function startMetronome(practice, durationMs) {
     stopMetronome();
     if (!practice.metronome || !audioContext) return;
@@ -35,16 +52,7 @@ export function startMetronome(practice, durationMs) {
         // 짧은 구간을 미리 예약해 타이머 오차로 인한 박자 흔들림을 줄인다.
         while (beat < beatCount && start + beat * interval < audioContext.currentTime + 0.12) {
             const when = Math.max(audioContext.currentTime, start + beat * interval);
-            const oscillator = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            oscillator.frequency.value = beat % practice.beatsPerBar === 0 ? 1000 : 700;
-            gain.gain.setValueAtTime(0.12, when);
-            gain.gain.exponentialRampToValueAtTime(0.001, when + 0.045);
-            oscillator.connect(gain).connect(audioContext.destination);
-            sounds.add(oscillator);
-            oscillator.onended = () => { sounds.delete(oscillator); oscillator.disconnect(); gain.disconnect(); };
-            oscillator.start(when);
-            oscillator.stop(when + 0.05);
+            playBeat(when, beat % practice.beatsPerBar === 0);
             beat++;
         }
         if (beat < beatCount) timer = setTimeout(schedule, 25);

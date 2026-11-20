@@ -89,6 +89,7 @@ function changeUser(user) {
 }
 export class GoogleAuthProvider {}
 export async function signInWithPopup() {
+  if (test.popupError) throw Object.assign(new Error("test popup error"), { code: test.popupError });
   const user = { uid: "user-a", displayName: "Auth name", photoURL: "" };
   changeUser(user); return { user };
 }
